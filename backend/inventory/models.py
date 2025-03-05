@@ -5,7 +5,6 @@ from django.db.models import Sum, F, ExpressionWrapper, fields
 from django.core.exceptions import ValidationError
 from django.utils.timezone import now
 
-
 # ✅ Product Model
 class Product(models.Model):
     name = models.CharField(max_length=255, unique=True)
@@ -35,13 +34,13 @@ class Product(models.Model):
 
     def total_sales(self):
         """
-        Returns total quantity sold for this product.
+        Returns the total quantity sold for this product.
         """
         return self.order_items.aggregate(total=Sum('quantity'))['total'] or 0
 
     def total_revenue(self):
         """
-        Returns total revenue generated from this product.
+        Returns the total revenue generated from this product.
         """
         return self.order_items.aggregate(
             revenue=Sum(ExpressionWrapper(F('price') * F('quantity'), output_field=fields.DecimalField()))
@@ -65,7 +64,7 @@ class InventoryTransaction(models.Model):
     def save(self, *args, **kwargs):
         """
         Automatically calculates transaction cost and updates product stock accordingly.
-        Raises ValidationError if there's insufficient stock for a sale.
+        Raises a ValidationError if there's insufficient stock for a sale.
         """
         base_price = self.product.price
         extra_charge = (base_price * Decimal(self.extra_charge_percent)) / Decimal(100)
@@ -121,7 +120,7 @@ class OrderItem(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        Ensures the price is set when creating an order item.
+        Sets the price for the order item and updates the product stock accordingly.
         """
         if not self.price:
             self.price = self.product.price * Decimal(self.quantity)
@@ -166,19 +165,15 @@ class StockAlert(models.Model):
 def total_sales():
     return OrderItem.objects.aggregate(total=Sum('quantity'))['total'] or 0
 
-
 def total_revenue():
     return Order.objects.filter(status='completed').aggregate(total=Sum('total_amount'))['total'] or Decimal(0)
-
 
 def avg_order_value():
     total_orders = Order.objects.filter(status='completed').count()
     return total_revenue() / total_orders if total_orders > 0 else Decimal(0)
 
-
 def unresolved_stock_alerts():
     return StockAlert.total_stock_alerts()
-
 
 def inventory_health():
     return {

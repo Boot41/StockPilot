@@ -16,3 +16,4 @@ def generate_text(prompt, model_name="gemini-1.5-flash"):
     except Exception as e:
         logger.error(f"Gemini API error: {e}")
         raise Exception(f"Failed to generate analytics: {str(e)}")
+    
