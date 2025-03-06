@@ -11,10 +11,14 @@ from authentication.serializers import (
     RegisterSerializer,
     LoginSerializer,
     ForgotPasswordSerializer,
-    ResetPasswordSerializer
+    ResetPasswordSerializer,
+    UserProfileSerializer,
+    UpdateUserProfileSerializer,
 )
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.decorators import action  # Add this import
+from rest_framework.decorators import action  
+from rest_framework.views import APIView
+
 
 class AuthViewSet(viewsets.ViewSet):
     """
@@ -47,7 +51,7 @@ class AuthViewSet(viewsets.ViewSet):
             return Response(serializer.validated_data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], url_path='forgot-password')
     def forgot_password(self, request):
         """ Forgot Password - Sends Password Reset Email """
         serializer = ForgotPasswordSerializer(data=request.data)
@@ -57,12 +61,11 @@ class AuthViewSet(viewsets.ViewSet):
                 user = User.objects.get(email=email)
                 uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
                 token = default_token_generator.make_token(user)
-                reset_link = f"{settings.FRONTEND_URL}/reset-password/{uidb64}/{token}/"
+                reset_url = f"{settings.FRONTEND_URL}/reset-password/{uidb64}/{token}/"
 
-                # Send email (Ensure email settings are configured in settings.py)
                 send_mail(
                     subject="Password Reset Request",
-                    message=f"Click the link below to reset your password:\n{reset_link}",
+                    message=f"Click the link below to reset your password:\n{reset_url}",
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[email],
                     fail_silently=False,
@@ -99,22 +102,35 @@ class ResetPasswordView(generics.GenericAPIView):
             return Response({"error": "Invalid token or user"}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class LogoutView(generics.GenericAPIView):
-    """ Logout - Blacklists refresh token """
+class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         try:
-            # Get the refresh token from the request
-            refresh_token = request.data.get('refresh')
+            refresh_token = request.data.get("refresh")
             if not refresh_token:
-                return Response({"error": "No refresh token provided"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Refresh token is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Blacklist the refresh token
             token = RefreshToken(refresh_token)
             token.blacklist()
 
-            return Response({"message": "Successfully logged out."}, status=status.HTTP_200_OK)
-
+            return Response({"message": "Successfully logged out"}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class ProfileView(APIView):
+    """ Profile View - Get & Update user details """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Retrieve user profile"""
+        serializer = UserProfileSerializer(request.user)
+        return Response(serializer.data)
+
+    def patch(self, request):
+        """Update user profile"""
+        serializer = UpdateUserProfileSerializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

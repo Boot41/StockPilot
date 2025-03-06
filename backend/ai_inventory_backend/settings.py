@@ -6,11 +6,17 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# Base directory of the project
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Secret key and debug mode
 SECRET_KEY = os.getenv("SECRET_KEY", "default-secret-key")
 DEBUG = os.getenv("DEBUG", "True") == "True"
+
+# Allowed hosts
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
+
+# Gemini API Key
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Installed applications
@@ -30,6 +36,7 @@ INSTALLED_APPS = [
     'authentication',
 ]
 
+# Middleware configuration
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -41,8 +48,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# Root URL configuration
 ROOT_URLCONF = 'ai_inventory_backend.urls'
 
+# Templates configuration
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -59,6 +68,7 @@ TEMPLATES = [
     },
 ]
 
+# WSGI application
 WSGI_APPLICATION = 'ai_inventory_backend.wsgi.application'
 
 # Database configuration
@@ -92,6 +102,9 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_THROTTLE_CLASSES': [],
+    'DEFAULT_THROTTLE_RATES': {},
+    'TEST_REQUEST_DEFAULT_FORMAT': 'json',
 }
 
 # JWT Authentication settings
@@ -104,11 +117,20 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-# Email backend (prints emails to the console in development)
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# Email settings for password reset
+EMAIL_USE_TLS = True
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "karan.singhrawat@think41.com")  
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")  
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # React frontend URL
+    "http://127.0.0.1:5173",  # React frontend URL
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+# Frontend URL for password reset link
+FRONTEND_URL = 'http://localhost:5173'  # Update if needed

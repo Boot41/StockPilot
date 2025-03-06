@@ -3,11 +3,10 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import {
   LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip,
-  PieChart, Pie, Cell,
-  BarChart, Bar, ResponsiveContainer
+  PieChart, Pie, Cell, BarChart, Bar, ResponsiveContainer
 } from 'recharts';
 import {
-  DollarSign, ShoppingCart, Package, Lightbulb, AlertTriangle, Zap
+  DollarSign, ShoppingCart, Package, AlertTriangle, Zap, RefreshCw
 } from 'lucide-react';
 
 const containerVariants = {
@@ -132,21 +131,6 @@ const Analytics = () => {
               <p className="mt-2 text-3xl font-bold">{card.value}</p>
             </motion.div>
           ))}
-          {/* Top Categories Card */}
-          <motion.div
-            variants={fadeInUp}
-            whileHover={{ scale: 1.05, boxShadow: '0 10px 20px rgba(0, 0, 0, 0.2)' }}
-            className="bg-gray-800 p-6 rounded-xl shadow-lg transition-shadow"
-          >
-            <h3 className="text-xl font-semibold">Top Categories</h3>
-            <ul className="mt-2 space-y-1">
-              {KPIs.topCategories.map((cat, index) => (
-                <li key={index} className="text-lg">
-                  {cat.category}: {cat.totalSold}
-                </li>
-              ))}
-            </ul>
-          </motion.div>
         </motion.div>
 
         {/* Monthly Sales Trend - Line Chart */}

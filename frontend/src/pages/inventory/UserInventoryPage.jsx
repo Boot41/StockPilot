@@ -1,18 +1,24 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { FaEdit, FaTrashAlt, FaBoxOpen, FaShoppingCart, FaBell, FaSearch, FaPlus } from "react-icons/fa";
-import { motion } from "framer-motion";
-import ErrorBoundary from '../../components/ErrorBoundary'; // Correct path
+import { 
+  FaEdit, FaTrashAlt, FaBoxOpen, FaShoppingCart, 
+  FaBell, FaSearch, FaPlus, FaFilter, FaChartLine 
+} from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
+import ErrorBoundary from '../../components/ErrorBoundary';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const API_BASE_URL = "http://localhost:8000";
 
 const UserInventoryPage = () => {
   const [activeTab, setActiveTab] = useState("products");
   const [products, setProducts] = useState([]);
+  const [groupedProducts, setGroupedProducts] = useState({});
   const [orders, setOrders] = useState([]);
   const [stockAlerts, setStockAlerts] = useState([]);
-  const [orderSearch, setOrderSearch] = useState("");
-  const [showAddProductForm, setShowAddProductForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [showAddProduct, setShowAddProduct] = useState(false);
   const [newProduct, setNewProduct] = useState({
     name: "",
     category: "",
@@ -28,6 +34,16 @@ const UserInventoryPage = () => {
     fetchOrders();
     fetchStockAlerts();
   }, []);
+
+  useEffect(() => {
+    const grouped = products.reduce((acc, product) => {
+      const category = product.category || "Uncategorized";
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(product);
+      return acc;
+    }, {});
+    setGroupedProducts(grouped);
+  }, [products]);
 
   const fetchProducts = async () => {
     try {
@@ -56,357 +72,314 @@ const UserInventoryPage = () => {
     }
   };
 
-  const handleEdit = (id) => {
-    alert(`Edit product with ID: ${id}`);
-  };
-
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
-      try {
-        await axios.delete(`${API_BASE_URL}/product/${id}/`);
-        fetchProducts();
-      } catch (error) {
-        console.error("Error deleting product:", error);
-      }
-    }
-  };
-
-  const handleOrderDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this order?")) {
-      try {
-        await axios.delete(`${API_BASE_URL}/order/${id}/`);
-        fetchOrders();
-      } catch (error) {
-        console.error("Error deleting order:", error);
-      }
-    }
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewProduct({ ...newProduct, [name]: value });
-  };
-
   const handleAddProduct = async () => {
     try {
       await axios.post(`${API_BASE_URL}/product/`, newProduct);
       fetchProducts();
-      setNewProduct({ name: "", category: "", description: "", quantity_in_stock: 0, price: 0, threshold_level: 0, extra_charge_percent: 5 });
-      setShowAddProductForm(false);
+      setNewProduct({ ...newProduct, name: "", category: "" });
+      setShowAddProduct(false);
     } catch (error) {
       console.error("Error adding product:", error);
     }
   };
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case "products":
-        return (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8">
-            <h2 className="text-3xl font-bold text-yellow-400 mb-4">Products</h2>
-            <div className="flex justify-between items-center mb-4">
-              <button
-                onClick={fetchProducts}
-                className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition-colors duration-200"
-              >
-                Refresh Products
-              </button>
-              <button
-                onClick={() => setShowAddProductForm(!showAddProductForm)}
-                className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded transition-colors duration-200"
-              >
-                <FaPlus className="mr-2" />
-                Add Product
-              </button>
-            </div>
-            {showAddProductForm && (
-              <div className="bg-gray-800 rounded-lg shadow-md p-4 mb-4 text-white">
-                <h3 className="text-lg font-semibold mb-2 text-yellow-400">Add New Product</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-300">Product Name</label>
-                    <input
-                      type="text"
-                      name="name"
-                      id="name"
-                      placeholder="Product Name"
-                      value={newProduct.name}
-                      onChange={handleInputChange}
-                      className="mt-1 block w-full border rounded py-2 px-3 bg-gray-700 text-white"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="category" className="block text-sm font-medium text-gray-300">Product Category</label>
-                    <input
-                      type="text"
-                      name="category"
-                      id="category"
-                      placeholder="Product Category"
-                      value={newProduct.category}
-                      onChange={handleInputChange}
-                      className="mt-1 block w-full border rounded py-2 px-3 bg-gray-700 text-white"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="description" className="block text-sm font-medium text-gray-300">Product Description</label>
-                    <input
-                      type="text"
-                      name="description"
-                      id="description"
-                      placeholder="Product Description"
-                      value={newProduct.description}
-                      onChange={handleInputChange}
-                      className="mt-1 block w-full border rounded py-2 px-3 bg-gray-700 text-white"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="quantity_in_stock" className="block text-sm font-medium text-gray-300">Quantity in Stock</label>
-                    <input
-                      type="number"
-                      name="quantity_in_stock"
-                      id="quantity_in_stock"
-                      placeholder="Quantity in Stock"
-                      value={newProduct.quantity_in_stock}
-                      onChange={handleInputChange}
-                      className="mt-1 block w-full border rounded py-2 px-3 bg-gray-700 text-white"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="price" className="block text-sm font-medium text-gray-300">Price (e.g., 19.99)</label>
-                    <input
-                      type="number"
-                      name="price"
-                      id="price"
-                      placeholder="Price (e.g., 19.99)"
-                      value={newProduct.price}
-                      onChange={handleInputChange}
-                      className="mt-1 block w-full border rounded py-2 px-3 bg-gray-700 text-white"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="threshold_level" className="block text-sm font-medium text-gray-300">Threshold Level</label>
-                    <input
-                      type="number"
-                      name="threshold_level"
-                      id="threshold_level"
-                      placeholder="Threshold Level"
-                      value={newProduct.threshold_level}
-                      onChange={handleInputChange}
-                      className="mt-1 block w-full border rounded py-2 px-3 bg-gray-700 text-white"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="extra_charge_percent" className="block text-sm font-medium text-gray-300">Extra Charge (%)</label>
-                    <input
-                      type="number"
-                      name="extra_charge_percent"
-                      id="extra_charge_percent"
-                      placeholder="Extra Charge (%)"
-                      value={newProduct.extra_charge_percent}
-                      onChange={handleInputChange}
-                      className="mt-1 block w-full border rounded py-2 px-3 bg-gray-700 text-white"
-                    />
-                  </div>
-                </div>
-                <button
-                  onClick={handleAddProduct}
-                  className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded mt-4 transition-colors duration-200"
-                >
-                  Add Product
-                </button>
-              </div>
-            )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {products.map((product) => (
-                <motion.div
-                  key={product.id}
-                  className="bg-gray-800 rounded-lg shadow-md p-4 flex flex-col justify-between text-white"
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <div>
-                    <h3 className="text-lg font-semibold text-yellow-400">{product.name}</h3>
-                    <p className="text-sm text-gray-300">Category: {product.category || "N/A"}</p>
-                    <p className="text-sm text-gray-300">Description: {product.description || "N/A"}</p>
-                    <p className="text-sm text-gray-300">Stock: {product.quantity_in_stock || "0"}</p>
-                    <p className="text-sm text-gray-300">Price: ₹{product.price || "0.00"}</p>
-                    <p className="text-sm text-gray-300">Threshold: {product.threshold_level || "0"}</p>
-                    <p className="text-sm text-gray-300">Extra charge: {product.extra_charge_percent || "0"} %</p>
-                  </div>
-                  <div className="mt-4 flex justify-end gap-2">
-                    <button
-                      onClick={() => handleEdit(product.id)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition-colors duration-200"
-                    >
-                      <FaEdit />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded transition-colors duration-200"
-                    >
-                      <FaTrashAlt />
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        );
-      case "orders":
-        return (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8">
-            <h2 className="text-3xl font-bold text-yellow-400 mb-4">Orders</h2>
-            <div className="flex items-center mb-4">
-              <input
-                type="text"
-                placeholder="Search Orders by ID or Status"
-                value={orderSearch}
-                onChange={(e) => setOrderSearch(e.target.value)}
-                className="border rounded py-2 px-3 mr-2 w-full bg-gray-800 text-white"
-              />
-              <button
-                onClick={fetchOrders}
-                className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition-colors duration-200"
-              >
-                <FaSearch className="mr-2" />
-                Refresh Orders
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-gray-800 rounded-lg shadow-md text-white">
-                <thead>
-                  <tr className="bg-gray-700">
-                    <th className="py-2 px-4 border-b text-left">ID</th>
-                    <th className="py-2 px-4 border-b text-left">Items</th>
-                    <th className="py-2 px-4 border-b text-left">Status</th>
-                    <th className="py-2 px-4 border-b text-left">Total Amount</th>
-                    <th className="py-2 px-4 border-b text-left">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.map((order) => {
-                    const itemCounts = order.items.reduce((acc, item) => {
-                      acc[item.product_name] = (acc[item.product_name] || 0) + item.quantity;
-                      return acc;
-                    }, {});
+  const filteredProducts = Object.entries(groupedProducts).filter(([category]) => 
+    filterCategory === "all" ? true : category === filterCategory
+  );
 
-                    return (
-                      <tr key={order.id} className="hover:bg-gray-700">
-                        <td className="py-2 px-4 border-b">{order.id}</td>
-                        <td className="py-2 px-4 border-b">
-                          {Object.entries(itemCounts).map(([productName, quantity]) => (
-                            <div key={productName}>
-                              {productName} ({quantity})
-                            </div>
-                          ))}
-                        </td>
-                        <td className="py-2 px-4 border-b">{order.status}</td>
-                        <td className="py-2 px-4 border-b">₹{order.total_amount}</td>
-                        <td className="py-2 px-4 border-b">
-                          <button onClick={() => handleOrderDelete(order.id)} className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded transition-colors duration-200">
-                            <FaTrashAlt />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </motion.div>
-        );
-      case "stockAlerts":
-        return (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8">
-            <h2 className="text-3xl font-bold text-yellow-400 mb-4">Stock Alerts</h2>
-            <button
-              onClick={fetchStockAlerts}
-              className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded mb-4 transition-colors duration-200"
-            >
-              Refresh Alerts
-            </button>
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-gray-800 rounded-lg shadow-md text-white">
-                <thead>
-                  <tr className="bg-gray-700">
-                    <th className="py-2 px-4 border-b text-left">ID</th>
-                    <th className="py-2 px-4 border-b text-left">Product</th>
-                    <th className="py-2 px-4 border-b text-left">Stock Level</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stockAlerts.map((alert) => (
-                    <tr
-                      key={alert.id}
-                      className={`hover:bg-gray-700 ${alert.stock_level <= 10 ? "bg-gray-500" : ""}`} // Changed to a solid gray color
-                    >
-                      <td className="py-2 px-4 border-b text-white font-bold">{alert.id}</td> {/* Changed text color and made bold */}
-                      <td className="py-2 px-4 border-b text-white font-bold">{alert.product_name}</td> {/* Changed text color and made bold */}
-                      <td className="py-2 px-4 border-b text-white font-bold">{alert.stock_level}</td> {/* Changed text color and made bold */}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </motion.div>
-        );
-      default:
-        return (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8">
-            Invalid Tab
-          </motion.div>
-        );
-    }
-  };
+  const productCategories = ["all", ...Object.keys(groupedProducts)];
+
+  const inventoryChartData = Object.entries(groupedProducts).map(([category, items]) => ({
+    name: category,
+    count: items.length,
+    stock: items.reduce((sum, item) => sum + item.quantity_in_stock, 0)
+  }));
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gradient-to-b from-blue-900 to-gray-900 text-white">
-        <header className="bg-gray-900 shadow-md p-4 flex justify-between items-center">
-          <div className="flex items-center">
-            <h1 className="text-xl font-semibold text-yellow-400">StockPilot</h1>
-          </div>
-          <div className="flex gap-4">
-            <div className="text-center">
-              <h4 className="text-sm font-semibold text-gray-300">Total Orders</h4>
-              <p className="text-lg text-gray-100">{orders.length}</p>
-            </div>
-            <div className="text-center">
-              <h4 className="text-sm font-semibold text-gray-300">Total Products</h4>
-              <p className="text-lg text-gray-100">{products.length}</p>
-            </div>
-            <div className="text-center">
-              <h4 className="text-sm font-semibold text-gray-300">Low Stock Alerts</h4>
-              <p className="text-lg text-gray-100">{stockAlerts.length}</p>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-gray-100">
+        {/* Header Section */}
+        <header className="bg-gray-800/50 backdrop-blur-lg border-b border-gray-700 p-4 flex justify-between items-center">
+          <div className="flex items-center space-x-4">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              StockPilot Pro
+            </h1>
+            <div className="flex space-x-6">
+              <div className="flex items-center space-x-2 bg-gray-700/50 px-4 py-2 rounded-lg">
+                <FaBoxOpen className="text-blue-400" />
+                <span>{products.length} Products</span>
+              </div>
+              <div className="flex items-center space-x-2 bg-gray-700/50 px-4 py-2 rounded-lg">
+                <FaShoppingCart className="text-green-400" />
+                <span>{orders.length} Orders</span>
+              </div>
+              <div className="flex items-center space-x-2 bg-gray-700/50 px-4 py-2 rounded-lg">
+                <FaBell className="text-red-400" />
+                <span>{stockAlerts.length} Alerts</span>
+              </div>
             </div>
           </div>
         </header>
+
         <div className="flex">
-          <aside className="w-64 bg-gray-800 p-4">
-            <nav>
-              <ul className="space-y-2">
-                <li
-                  className={`p-2 rounded cursor-pointer ${activeTab === "products" ? "bg-gray-700" : "hover:bg-gray-700"}`}
-                  onClick={() => setActiveTab("products")}
-                >
-                  <FaBoxOpen className="inline-block mr-2" /> Products
-                </li>
-                <li
-                  className={`p-2 rounded cursor-pointer ${activeTab === "orders" ? "bg-gray-700" : "hover:bg-gray-700"}`}
-                  onClick={() => setActiveTab("orders")}
-                >
-                  <FaShoppingCart className="inline-block mr-2" /> Orders
-                </li>
-                <li
-                  className={`p-2 rounded cursor-pointer ${activeTab === "stockAlerts" ? "bg-gray-700" : "hover:bg-gray-700"}`}
-                  onClick={() => setActiveTab("stockAlerts")}
-                >
-                  <FaBell className="inline-block mr-2" /> Stock Alerts
-                </li>
-              </ul>
-            </nav>
-          </aside>
-          <main className="flex-1">{renderContent()}</main>
+          {/* Navigation Sidebar */}
+          <nav className="w-64 bg-gray-800/50 border-r border-gray-700 p-4 space-y-2">
+            <button
+              onClick={() => setActiveTab("products")}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
+                activeTab === "products" ? "bg-blue-500/20 text-blue-400" : "hover:bg-gray-700/50"
+              }`}
+            >
+              <FaBoxOpen />
+              <span>Product Catalog</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("orders")}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
+                activeTab === "orders" ? "bg-green-500/20 text-green-400" : "hover:bg-gray-700/50"
+              }`}
+            >
+              <FaShoppingCart />
+              <span>Order Management</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("stockAlerts")}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
+                activeTab === "stockAlerts" ? "bg-red-500/20 text-red-400" : "hover:bg-gray-700/50"
+              }`}
+            >
+              <FaBell />
+              <span>Stock Alerts</span>
+            </button>
+          </nav>
+
+          {/* Main Content Area */}
+          <main className="flex-1 p-6">
+            {activeTab === "products" && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                {/* Products Header */}
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-3xl font-bold">Product Management</h2>
+                  <button
+                    onClick={() => setShowAddProduct(!showAddProduct)}
+                    className="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors"
+                  >
+                    <FaPlus />
+                    <span>Add Product</span>
+                  </button>
+                </div>
+
+                {/* Add Product Form */}
+                <AnimatePresence>
+                  {showAddProduct && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="bg-gray-800/50 backdrop-blur-lg p-6 rounded-xl mb-8 border border-gray-700"
+                    >
+                      <h3 className="text-xl font-semibold mb-4">New Product Details</h3>
+                      <div className="grid grid-cols-2 gap-6">
+                        {Object.entries(newProduct).map(([key, value]) => (
+                          <div key={key}>
+                            <label className="block text-sm mb-2 capitalize">{key.replace(/_/g, ' ')}</label>
+                            <input
+                              type={typeof value === 'number' ? 'number' : 'text'}
+                              name={key}
+                              value={value}
+                              onChange={(e) => setNewProduct({ ...newProduct, [key]: e.target.value })}
+                              className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-end space-x-4 mt-6">
+                        <button
+                          onClick={() => setShowAddProduct(false)}
+                          className="px-6 py-2 rounded-lg border border-gray-600 hover:bg-gray-700/50 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleAddProduct}
+                          className="bg-blue-500 hover:bg-blue-600 px-6 py-2 rounded-lg transition-colors"
+                        >
+                          Create Product
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Inventory Overview Chart */}
+                <div className="bg-gray-800/50 p-6 rounded-xl mb-8 border border-gray-700">
+                  <h3 className="text-xl font-semibold mb-4">Inventory Overview</h3>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={inventoryChartData}>
+                        <XAxis dataKey="name" stroke="#94a3b8" />
+                        <YAxis stroke="#94a3b8" />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1e293b', border: 'none' }}
+                          itemStyle={{ color: '#f8fafc' }}
+                        />
+                        <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="stock" fill="#10b981" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Product Categories Filter */}
+                <div className="flex items-center space-x-4 mb-6">
+                  <div className="flex items-center space-x-2 bg-gray-800/50 px-4 py-2 rounded-lg">
+                    <FaFilter className="text-purple-400" />
+                    <select 
+                      value={filterCategory}
+                      onChange={(e) => setFilterCategory(e.target.value)}
+                      className="bg-transparent outline-none"
+                    >
+                      {productCategories.map(category => (
+                        <option key={category} value={category} className="bg-gray-800">
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Search products..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full bg-gray-800/50 border border-gray-700 rounded-lg pl-10 pr-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                      <FaSearch className="absolute left-3 top-3 text-gray-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Grouped Products */}
+                {filteredProducts.map(([category, items]) => (
+                  <div key={category} className="mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xl font-semibold">{category} ({items.length})</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {items.map(product => (
+                        <motion.div
+                          key={product.id}
+                          whileHover={{ y: -4 }}
+                          className="bg-gray-800/50 border border-gray-700 rounded-xl p-4"
+                        >
+                          <div className="flex justify-between items-start mb-4">
+                            <h4 className="text-lg font-medium">{product.name}</h4>
+                            <div className="flex space-x-2">
+                              <button className="text-blue-400 hover:text-blue-300">
+                                <FaEdit />
+                              </button>
+                              <button className="text-red-400 hover:text-red-300">
+                                <FaTrashAlt />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="space-y-2 text-sm text-gray-300">
+                            <p>Stock: {product.quantity_in_stock}</p>
+                            <p>Price: ₹{product.price}</p>
+                            <p>Threshold: {product.threshold_level}</p>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </motion.div>
+            )}
+
+            {/* Orders Tab */}
+            {activeTab === "orders" && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-3xl font-bold">Order Management</h2>
+                  <div className="flex items-center space-x-4">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Search orders..."
+                        className="bg-gray-800/50 border border-gray-700 rounded-lg pl-10 pr-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                      <FaSearch className="absolute left-3 top-3 text-gray-400" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border border-gray-700 rounded-xl overflow-hidden">
+                  <table className="w-full">
+                    <thead className="bg-gray-800/50">
+                      <tr>
+                        <th className="px-6 py-4 text-left">Order ID</th>
+                        <th className="px-6 py-4 text-left">Items</th>
+                        <th className="px-6 py-4 text-left">Status</th>
+                        <th className="px-6 py-4 text-left">Total</th>
+                        <th className="px-6 py-4 text-left">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.map(order => (
+                        <tr key={order.id} className="border-t border-gray-700 hover:bg-gray-800/20">
+                          <td className="px-6 py-4">#{order.id}</td>
+                          <td className="px-6 py-4">
+                            {order.items.map(item => (
+                              <div key={item.id} className="flex items-center space-x-2">
+                                <span>{item.product_name}</span>
+                                <span className="text-gray-400">x{item.quantity}</span>
+                              </div>
+                            ))}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-sm">
+                              {order.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">₹{order.total_amount}</td>
+                          <td className="px-6 py-4">
+                            <button className="text-red-400 hover:text-red-300">
+                              <FaTrashAlt />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Stock Alerts Tab */}
+            {activeTab === "stockAlerts" && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-3xl font-bold">Stock Alerts</h2>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {stockAlerts.map(alert => (
+                    <div
+                      key={alert.id}
+                      className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl flex items-center justify-between"
+                    >
+                      <div>
+                        <h4 className="text-lg font-medium">{alert.product_name}</h4>
+                        <p className="text-red-400">Current Stock: {alert.stock_level}</p>
+                      </div>
+                      <FaBell className="text-red-400 text-xl" />
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </main>
         </div>
       </div>
     </ErrorBoundary>

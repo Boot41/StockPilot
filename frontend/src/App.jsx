@@ -3,44 +3,46 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-// Pages
+// Import pages
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
+import ForgotPassword from "./pages/auth/ForgotPassword"; // Added ForgotPassword Page
+import ResetPassword from "./pages/auth/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Inventory from "./pages/inventory/Inventory";
 import ProductDetails from "./pages/inventory/ProductDetails";
 import Forecast from "./pages/insights/Forecast";
+import ImportForecast from "./pages/insights/ImportForecast";
 import Analytics from "./pages/insights/Analytics";
-import Settings from "./pages/insights/Settings";  // Added Settings
-import HelpSupport from "./pages/insights/HelpSupport"; // Added Help & Support
-import UserInventoryPage from "./pages/inventory/UserInventoryPage"; // ✅ Import the new page
+import Settings from "./pages/insights/Settings";
+import HelpSupport from "./pages/insights/HelpSupport";
+import UserInventoryPage from "./pages/inventory/UserInventoryPage";
 
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Routes>
-          {/* Public Route - Landing Page */}
+          {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
-          
-          {/* Auth Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} /> {/* Added Forgot Password Route */}
+          <Route path="/reset-password/:uidb64/:token" element={<ResetPassword />} />
 
-          {/* Protected Routes - Require Authentication */}
+          {/* Protected Routes */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
           <Route path="/inventory/:id" element={<ProtectedRoute><ProductDetails /></ProtectedRoute>} />
           <Route path="/forecast" element={<ProtectedRoute><Forecast /></ProtectedRoute>} />
+          <Route path="/import-forecast" element={<ProtectedRoute><ImportForecast /></ProtectedRoute>} />
           <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/help-support" element={<ProtectedRoute><HelpSupport /></ProtectedRoute>} />
-          
-          {/* ✅ New Route for User Inventory Page */}
           <Route path="/user-inventory" element={<ProtectedRoute><UserInventoryPage /></ProtectedRoute>} />
 
-          {/* Redirect unknown routes to Landing Page */}
+          {/* Redirect unknown routes */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

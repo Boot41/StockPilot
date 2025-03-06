@@ -8,7 +8,8 @@ import {
   Settings, 
   HelpCircle, 
   LogOut, 
-  ClipboardList // ✅ Added icon for User Inventory
+  ClipboardList,
+  Upload // Using Upload icon for "Import & Forecast"
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -16,11 +17,12 @@ const Sidebar = () => {
   const { logout } = useAuth();
 
   const navItems = [
+    { path: '/import-forecast', name: 'Import & Forecast', icon: Upload }, // New item at the top
     { path: '/dashboard', name: 'Dashboard', icon: LayoutDashboard },
     { path: '/inventory', name: 'Inventory', icon: Package },
     { path: '/forecast', name: 'Forecast', icon: TrendingUp },
     { path: '/analytics', name: 'Analytics', icon: BarChart2 },
-    { path: '/user-inventory', name: 'User Inventory', icon: ClipboardList }, // ✅ Added this line
+    { path: '/user-inventory', name: 'User Inventory', icon: ClipboardList },
     { path: '/settings', name: 'Settings', icon: Settings },
     { path: '/help-support', name: 'Help & Support', icon: HelpCircle },
   ];

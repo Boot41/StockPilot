@@ -5,9 +5,10 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Sum, F
 from django.db.models.functions import ExtractMonth
 from rest_framework import generics, status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from .utils import process_inventory_query
 import json
@@ -15,12 +16,13 @@ import re
 import logging
 from collections import defaultdict
 import numpy as np
+import pandas as pd  # Ensure pandas is imported for handling dataframes
 import requests
 
 from .models import Product, InventoryTransaction, Order, OrderItem, StockAlert
 from .serializers import (
     ProductSerializer, InventorySerializer, OrderSerializer,
-    OrderItemSerializer, StockAlertSerializer
+    OrderItemSerializer, StockAlertSerializer, InventoryForecastSerializer
 )
 from .gemini_api import generate_text
 
@@ -411,3 +413,157 @@ class ChatbotAPIView(APIView):
         except Exception as e:
             logger.error("ChatbotAPIView Error: %s", e)
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# User Excel Input Analytics 
+
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
+def inventory_forecast(request):
+    """
+    POST endpoint for AI-powered inventory analytics and forecasting.
+    Supports JSON payload or CSV/Excel file upload.
+    """
+    try:
+        raw_data = None
+
+        # Handle JSON input
+        if request.content_type == "application/json":
+            raw_data = request.data.get("data")
+
+        # Handle file upload (CSV/Excel)
+        elif request.content_type.startswith("multipart/form-data"):
+            uploaded_file = request.FILES.get('file')
+            if not uploaded_file:
+                return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Read file based on type
+            try:
+                if uploaded_file.name.endswith('.csv'):
+                    df = pd.read_csv(uploaded_file)
+                elif uploaded_file.name.endswith(('.xlsx', '.xls')):
+                    df = pd.read_excel(uploaded_file)
+                else:
+                    return Response({"error": "Unsupported file format"}, status=status.HTTP_400_BAD_REQUEST)
+                raw_data = df.to_dict(orient="records")
+            except Exception as pandas_e:
+                logger.error(f"Pandas error: {pandas_e}")
+                return Response({"error": f"Error reading file. {pandas_e}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate input data
+        if not raw_data:
+            return Response({"error": "No valid data provided."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # AI-driven inventory analytics & forecasting prompt
+        prompt = f"""
+You are an advanced AI-powered inventory analytics and forecasting system.
+Analyze the provided inventory dataset and generate the following JSON output:
+
+### **1. Inventory Analytics**
+- Identify key trends in stock levels, **fast-moving vs. slow-moving products**, and overall inventory health.
+- Calculate **total inventory value** based on current stock levels and product prices.
+- Highlight potential stock issues:
+  - **Overstocking**: Products with excessive inventory that may need promotion or clearance.
+  - **Low Stock Alerts**: Products nearing stockout that may require immediate restocking.
+- Identify **top-performing product categories** based on sales volume (if available).
+- Provide actionable insights to **optimize stock management and reduce waste**.
+
+### **2. 30-Day Sales Forecasting**
+Predict future demand for each product over the next 30 days based on historical patterns, trends, and current inventory levels:
+- For each product, return:
+  - **product_name**: Name of the product
+  - **predicted_sales**: Expected number of units sold in the next 30 days
+  - **confidence_score**: A value between 0 and 1 indicating the certainty of the forecast
+
+### **Inventory Analysis Instructions**
+- Calculate the overall inventory health based on stock levels.
+- If the average stock level is high, set 'status' to 'high' and provide insights about overstocking.
+- If the average stock level is medium, set 'status' to 'medium' and provide general insights.
+- If the average stock level is low, set 'status' to 'low' and provide insights about potential stockouts.
+
+### **Fast Moving Products Instructions**
+- Identify the top 5 products with the highest projected sales.
+- Include the 'product_name', 'stock', and 'projected_sales' for each fast-moving product.
+
+### **Slow Moving Products Instructions**
+- Identify the top 5 products with the lowest projected sales.
+- Include the 'product_name', 'stock', and 'projected_sales' for each slow-moving product.
+
+### **Input Data Format**
+The input consists of raw inventory records from a database or a spreadsheet. Some fields may be missing or misformatted, so infer the best possible insights.
+
+### **Expected JSON Output**
+Return a structured JSON object with the following keys:
+- `"forecast"`: A list of product-wise demand predictions.
+- `"inventory_analysis"`: An object containing inventory health status and insights.
+- `"fast_moving_products"`: A list of fast-moving products.
+- `"slow_moving_products"`: A list of slow-moving products.
+
+### **Expected JSON Output Example**
+{{
+  "forecast": [
+    {{
+      "product_name": "Laptop",
+      "predicted_sales": 120,
+      "confidence_score": 0.8
+    }},
+    ...
+  ],
+  "inventory_analysis": {{
+    "status": "medium",
+    "insights": ["Some products are at risk of stockout.", "Increase stock for popular items."]
+  }},
+  "fast_moving_products": [
+    {{
+      "product": "Laptop",
+      "stock": 51,
+      "projected_sales": 120
+    }},
+    ...
+  ],
+  "slow_moving_products": [
+    {{
+      "product": "Magazine",
+      "stock": 2,
+      "projected_sales": 10
+    }},
+    ...
+  ]
+}}
+
+### **Raw Data Input**
+{json.dumps(raw_data, indent=2)}
+
+Ensure that the response follows the specified format with **only valid JSON output**.
+        """
+
+        logger.info("Generated AI prompt for analytics & forecasting: %s", prompt)
+
+        # Call AI model (Gemini API)
+        try:
+            ai_response = generate_text(prompt, model_name="gemini-1.5-flash")
+            logger.info("Raw AI response: %s", ai_response)
+        except Exception as llm_e:
+            logger.error(f"LLM error: {llm_e}")
+            return Response({"error": f"Error with LLM API. {llm_e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Clean & parse AI response
+        cleaned_response = clean_ai_response(ai_response)
+        print("Cleaned AI Response:", cleaned_response)
+
+        try:
+            structured_output = json.loads(cleaned_response)
+            print("Structured output:", structured_output)
+
+            # Ensure the structure of the output matches the expected format.
+            if not all(key in structured_output for key in ["forecast", "inventory_analysis", "fast_moving_products", "slow_moving_products"]):
+                return Response({"error": "AI response did not contain required keys"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            return Response(structured_output, status=status.HTTP_200_OK)
+
+        except json.JSONDecodeError:
+            logger.error(f"Json decode error: {cleaned_response}")
+            return Response({"error": "AI response was not valid JSON"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    except Exception as e:
+        logger.exception("Error processing inventory forecast")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

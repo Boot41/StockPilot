@@ -6,8 +6,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 class RegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=True)
-    password = serializers.CharField(write_only=True, min_length=8, max_length=128)
-    confirm_password = serializers.CharField(write_only=True, min_length=8, max_length=128)
+    password = serializers.CharField(write_only=True, min_length=6)
+    confirm_password = serializers.CharField(write_only=True, min_length=6)
 
     class Meta:
         model = User
@@ -33,7 +33,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
-    password = serializers.CharField(write_only=True, min_length=8, max_length=128)
+    password = serializers.CharField(write_only=True)
 
     def validate(self, data):
         """Authenticate user and return JWT token"""
@@ -53,12 +53,6 @@ class LoginSerializer(serializers.Serializer):
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
-    def validate_email(self, value):
-        """Ensure email exists in the system"""
-        if not User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("No user found with this email.")
-        return value
-
 
 class ResetPasswordSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, min_length=8, max_length=128)
@@ -69,3 +63,30 @@ class ResetPasswordSerializer(serializers.Serializer):
         if data['password'] != data['confirm_password']:
             raise serializers.ValidationError({"confirm_password": "Passwords must match."})
         return data
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    """Serializer for viewing & updating user profile"""
+    
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name']
+        read_only_fields = ['id', 'username', 'email']  # Username & Email should not be updated
+
+
+class UpdateUserProfileSerializer(serializers.ModelSerializer):
+    """Serializer for updating user profile details"""
+    
+    first_name = serializers.CharField(required=False)
+    last_name = serializers.CharField(required=False)
+
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name']
+
+    def update(self, instance, validated_data):
+        """Update user profile"""
+        instance.first_name = validated_data.get('first_name', instance.first_name)
+        instance.last_name = validated_data.get('last_name', instance.last_name)
+        instance.save()
+        return instance

@@ -220,3 +220,19 @@ class MonthlySalesStockSummarySerializer(serializers.Serializer):
         except Exception as e:
             # Log error or handle it as needed.
             return []
+
+class InventoryForecastSerializer(serializers.Serializer):
+    file = serializers.FileField()
+
+    def validate_file(self, value):
+        """ Validate file type and size """
+        allowed_extensions = ['csv', 'xlsx', 'xls', 'txt', 'ods']
+        file_extension = value.name.split('.')[-1].lower()
+
+        if file_extension not in allowed_extensions:
+            raise serializers.ValidationError("Unsupported file format. Allowed: CSV, Excel, TXT, ODS")
+
+        if value.size > 5 * 1024 * 1024:  # 5MB limit
+            raise serializers.ValidationError("File size exceeds the 5MB limit.")
+
+        return value

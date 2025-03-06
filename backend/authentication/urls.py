@@ -3,14 +3,16 @@ from rest_framework.routers import DefaultRouter
 from authentication.views import (
     AuthViewSet,
     ResetPasswordView,
-    LogoutView
+    LogoutView,
+    ProfileView
 )
 
 router = DefaultRouter()
-router.register(r'', AuthViewSet, basename='auth')  # Includes register, login, and forgot-password
+router.register(r'', AuthViewSet, basename='auth')
 
 urlpatterns = [
-    path('', include(router.urls)),  # Handles register, login, forgot-password (inside AuthViewSet)
-    path('reset-password/<uidb64>/<token>/', ResetPasswordView.as_view(), name='reset-password'),  # Reset Password API
-    path('logout/', LogoutView.as_view(), name='logout'),  # Logout API
+    path('', include(router.urls)),  # Register, Login, Forgot Password
+    path('reset-password/<uidb64>/<token>/', ResetPasswordView.as_view(), name='reset-password'),
+    path('logout/', LogoutView.as_view(), name='auth-logout'),
+    path('profile/', ProfileView.as_view(), name='auth-profile'),
 ]

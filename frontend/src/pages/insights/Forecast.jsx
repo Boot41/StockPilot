@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import MainLayout from '../../components/layout/MainLayout';
-import ErrorBoundary from '../../components/ErrorBoundary'; // Adjust path as needed
-import { ArrowLeft, Upload } from 'lucide-react';
+import ErrorBoundary from '../../components/ErrorBoundary';
+import { ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Papa from 'papaparse';
 import { useNavigate } from 'react-router-dom';
 import { Bar } from 'react-chartjs-2';
 import {
@@ -20,14 +19,12 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
 const Forecast = () => {
   const [timeframe, setTimeframe] = useState('6 months');
-  const [forecastData, setForecastData] = useState(null); // forecastData from API
+  const [forecastData, setForecastData] = useState(null);
   const [filteredData, setFilteredData] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [bgGradient] = useState("bg-gradient-to-b from-blue-900 to-gray-900");
-  const [importedData, setImportedData] = useState(null);
-  const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -50,7 +47,6 @@ const Forecast = () => {
     fetchForecastData();
   }, []);
 
-  // Filter the forecastData based on search term
   useEffect(() => {
     if (forecastData) {
       const filtered = forecastData.filter(item =>
@@ -60,36 +56,6 @@ const Forecast = () => {
     }
   }, [searchTerm, forecastData]);
 
-  const handleImportClick = () => {
-    fileInputRef.current.click();
-  };
-
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      Papa.parse(file, {
-        header: true,
-        complete: (results) => {
-          const expectedHeaders = ["Product Name", "Current Stock", "Estimated Days Left"];
-          const headers = Object.keys(results.data[0] || {});
-          if (!expectedHeaders.every(header => headers.includes(header))) {
-            setError("Invalid CSV format. Please ensure the file has the correct headers.");
-            return;
-          }
-          if (results.data.some(row => isNaN(Number(row["Current Stock"])))) {
-            setError("Invalid data type in 'Current Stock' column. Please ensure all values are numbers.");
-            return;
-          }
-          setImportedData(results.data);
-        },
-        error: (error) => {
-          setError(`CSV parsing error: ${error.message}`);
-        },
-      });
-    }
-  };
-
-  // Prepare data for the bar chart using filteredData
   const getChartData = () => {
     if (!filteredData) return {};
     return {
@@ -108,7 +74,6 @@ const Forecast = () => {
           backgroundColor: 'rgba(75, 192, 192, 0.5)',
           borderColor: 'rgba(75, 192, 192, 1)',
           borderWidth: 1,
-          // Optionally you could show this as another bar (or change chart type)
         }
       ],
     };
@@ -181,23 +146,7 @@ const Forecast = () => {
               >
                 <ArrowLeft size={16} className="mr-2" /> Back
               </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="px-4 py-2 border rounded-md text-gray-300 bg-gray-800 hover:bg-gray-700 transition-colors duration-300 flex items-center"
-                onClick={handleImportClick}
-              >
-                <Upload size={16} className="mr-2" /> Import
-              </motion.button>
-              <input
-                type="file"
-                ref={fileInputRef}
-                style={{ display: 'none' }}
-                onChange={handleFileChange}
-                accept=".csv"
-              />
             </div>
-            {/* Search filter input */}
             <input
               type="text"
               placeholder="Search products..."
@@ -241,34 +190,6 @@ const Forecast = () => {
               </motion.div>
             )}
           </AnimatePresence>
-
-          {importedData && (
-            <div className="mt-6 bg-gray-800 rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4 text-gray-300">Imported Data</h2>
-              <table className="min-w-full divide-y divide-gray-700">
-                <thead>
-                  <tr>
-                    {Object.keys(importedData[0] || {}).map((key) => (
-                      <th key={key} className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                        {key}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-gray-900 divide-y divide-gray-700">
-                  {importedData.map((row, index) => (
-                    <tr key={index}>
-                      {Object.values(row).map((value, idx) => (
-                        <td key={idx} className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {value}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
       </MainLayout>
     </ErrorBoundary>

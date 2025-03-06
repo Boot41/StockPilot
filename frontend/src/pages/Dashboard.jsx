@@ -1,158 +1,356 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
 import MainLayout from '../components/layout/MainLayout';
+import { FiSend, FiChevronRight, FiBarChart2, FiPackage, FiTrendingUp } from 'react-icons/fi';
 
-// Define your API base URL
 const API_BASE_URL = 'http://localhost:8000';
 
-const Dashboard = () => {
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      sender: 'bot',
-      text: `Hi there! I'm StockPilot AI. Ask me about:
-- Product counts
-- Stock levels
-- Sales trends
-- Revenue metrics
-- Recent orders
-- Demand forecasts
-- Inventory health`
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Something went wrong!</strong>
+          <span className="block sm:inline"> Please try refreshing the page.</span>
+        </div>
+      );
     }
-  ]);
+    return this.props.children;
+  }
+}
+
+const markdownComponents = {
+  table: ({ node, ...props }) => <table className="min-w-full border border-gray-600" {...props} />,
+  th: ({ node, ...props }) => <th className="px-6 py-3 text-white font-bold border border-gray-600" {...props} />,
+  td: ({ node, ...props }) => <td className="px-6 py-4 text-white border border-gray-600" {...props} />,
+  p: ({ node, ...props }) => <p className="text-white" {...props} />,
+  li: ({ node, ordered, ...props }) => <li className="text-white" {...props} />,
+  h1: ({ node, ...props }) => <h1 className="text-white font-bold" {...props} />,
+  h2: ({ node, ...props }) => <h2 className="text-white font-bold" {...props} />,
+  h3: ({ node, ...props }) => <h3 className="text-white font-bold" {...props} />,
+  h4: ({ node, ...props }) => <h4 className="text-white font-bold" {...props} />,
+  h5: ({ node, ...props }) => <h5 className="text-white font-bold" {...props} />,
+  h6: ({ node, ...props }) => <h6 className="text-white font-bold" {...props} />,
+};
+
+const Dashboard = () => {
+  const [messages, setMessages] = useState([{
+    id: 1,
+    sender: 'bot',
+    text: `Welcome to StockPilot Enterprise AI. How can I assist with your inventory management today?`,
+    data: null
+  }]);
   const [input, setInput] = useState('');
   const [isBotTyping, setIsBotTyping] = useState(false);
   const chatContainerRef = useRef(null);
 
-  useEffect(() => {
+  const quickQueries = [
+    'Show current inventory levels',
+    'Display sales trends for last quarter',
+    'Predict demand for next month',
+    'Show low-stock alerts',
+    'Generate inventory health report',
+    'Analyze supplier performance'
+  ];
+
+  const showSuggestions = messages.filter(m => m.sender === 'user').length === 0;
+
+  const scrollToBottom = useCallback(() => {
     chatContainerRef.current?.scrollTo({
       top: chatContainerRef.current.scrollHeight,
       behavior: 'smooth'
     });
-  }, [messages]);
+  },);
 
-  const fetchData = async (endpoint) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/${endpoint}/`);
-      if (!response.ok) {
-        const text = await response.text();
-        console.error('Fetch error:', response.status, text);
-        throw new Error('Network response was not ok');
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('API Error:', error);
-      return null;
+  useEffect(scrollToBottom, [messages]);
+
+  // Render a responsive inventory table with dynamic keys
+  const renderInventoryTable = (data, keys) => (
+    <div className="mt-4 overflow-x-auto">
+      <h4 className="text-sm font-semibold mb-2 text-white">Data Table</h4>
+      <table className="min-w-full border border-gray-600">
+        <thead>
+          <tr>
+            {keys.map((key) => (
+              <th key={key} className="px-6 py-3 text-white font-bold border border-gray-600">
+                {key.replace(/_/g, ' ').toUpperCase()}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="bg-gray-700 divide-y divide-gray-600">
+          {data.map((item) => (
+            <tr key={item.id}>
+              {keys.map((key) => (
+                <td key={key} className="px-6 py-4 text-white border border-gray-600">
+                  {item[key]}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const renderFormattedContent = (message) => {
+    if (message.data && Array.isArray(message.data)) {
+      return (
+        <>
+          {message.text && typeof message.text === 'string' && (
+            <div className="prose prose-invert">
+              <ReactMarkdown components={markdownComponents}>{message.text}</ReactMarkdown>
+            </div>
+          )}
+          {renderInventoryTable(message.data, message.keys)}
+        </>
+      );
     }
+
+    if (message.text && typeof message.text === 'string') {
+      return (
+        <div className="prose prose-invert">
+          <ReactMarkdown components={markdownComponents}>{message.text}</ReactMarkdown>
+        </div>
+      );
+    }
+
+    return null;
   };
 
-  const getChatbotResponse = async (userQuery) => {
+  const getChatbotResponse = async (query) => {
     try {
       const response = await fetch(`${API_BASE_URL}/chatbot/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: userQuery }
-              ]
-            }
-          ]
+          contents: [{ parts: [{ text: query }] }]
         }),
       });
-      
+
       if (!response.ok) {
-        const errText = await response.text();
-        console.error('Error in /chatbot/:', response.status, errText);
-        throw new Error('Chatbot API request failed');
+        const errorData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
+        throw new Error(errorData.error || 'API request failed');
       }
-      
       const data = await response.json();
-      return data.response;
+      console.log("API response:", data);
+
+      // Check if the response contains tabular data
+      if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
+        const keys = Object.keys(data.data[0]);
+        return {
+          answer: data.answer || "Here's the data:",
+          data: data.data,
+          keys: keys
+        };
+      }
+
+      return data.response || data;
     } catch (error) {
-      console.error('Error fetching chatbot response:', error);
-      return 'An error occurred while processing your request.';
+      console.error('Chatbot error:', error);
+      return {
+        answer: '⚠️ Error processing request. Please try again.',
+        isError: true
+      };
     }
   };
 
   const handleSend = async () => {
     if (!input.trim()) return;
 
-    const userMessage = { id: messages.length + 1, sender: 'user', text: input.trim() };
+    const userMessage = {
+      id: Date.now(),
+      sender: 'user',
+      text: input.trim(),
+      timestamp: new Date().toISOString()
+    };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsBotTyping(true);
 
     try {
-      // Fetch the chatbot response from the backend
-      const botResponse = await getChatbotResponse(userMessage.text);
-      
-      const botMessage = { id: messages.length + 2, sender: 'bot', text: botResponse.answer || botResponse };
+      const result = await getChatbotResponse(input.trim());
+      let botMessage = {
+        id: Date.now() + 1,
+        sender: 'bot',
+        text: result.answer,
+        data: result.data,
+        keys: result.keys, // Include keys here
+        isError: result.isError,
+        timestamp: new Date().toISOString()
+      };
+
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
-      console.error("Error processing query:", error);
+      console.error('Handle send error:', error);
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        sender: 'bot',
+        text: '⚠️ Unexpected error occurred. Please try again later.',
+        isError: true
+      }]);
+    } finally {
+      setIsBotTyping(false);
     }
-    setIsBotTyping(false);
+  };
+
+  const handleSuggestionClick = (suggestion) => {
+    setInput(suggestion);
+    setTimeout(() => document.getElementById('chat-input').focus(), 100);
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter') handleSend();
+    if (e.key === 'Enter' && !e.shiftKey) handleSend();
   };
 
   return (
-    <MainLayout>
-      <div className="bg-gradient-to-b from-blue-900 to-gray-900 text-white min-h-screen p-8">
-        <div className="container mx-auto">
-          <h1 className="text-4xl font-bold mb-6">Dashboard</h1>
-          <div className="mb-8">
-            <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-1 rounded-lg animate-pulse">
-              <div className="bg-gray-800 rounded-lg p-4 text-center">
-                <h2 className="text-2xl font-bold">Welcome to StockPilot!</h2>
-                <p className="mt-2 text-lg">Set Your Inventory on Autopilot</p>
+    <ErrorBoundary>
+      <MainLayout>
+        <div className="bg-gradient-to-br from-gray-900 to-blue-900 min-h-screen p-8">
+          <div className="max-w-7xl mx-auto space-y-8">
+            {/* Dashboard Header */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center justify-between"
+            >
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+                Enterprise Dashboard
+              </h1>
+              <div className="flex gap-4">
+                <div className="bg-gray-800/50 p-3 rounded-xl flex items-center gap-2">
+                  <FiPackage className="text-blue-400" />
+                  <span className="text-sm">Live Inventory Tracking</span>
+                </div>
+                <div className="bg-gray-800/50 p-3 rounded-xl flex items-center gap-2">
+                  <FiTrendingUp className="text-green-400" />
+                  <span className="text-sm">Real-time Analytics</span>
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="bg-gray-800 rounded-lg shadow-lg p-4 max-w-3xl mx-auto">
-            <h2 className="text-xl font-semibold mb-4">StockPilot AI Assistant</h2>
-            <div ref={chatContainerRef} className="h-[250px] overflow-y-auto mb-4 p-4 bg-gray-700 rounded-xl">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`mb-3 p-3 rounded-xl ${message.sender === 'bot' 
-                    ? 'bg-blue-900 text-blue-100' 
-                    : 'bg-purple-900 text-white ml-8'}`}
-                >
-                  {message.text.split('\n').map((line, i) => (
-                    <p key={i} className="mb-1">{line}</p>
+            </motion.div>
+
+            {/* AI Chat Section */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-gray-800/50 backdrop-blur-xl rounded-3xl border border-gray-700/30 overflow-hidden"
+            >
+              <div className="p-6 border-b border-gray-700/30">
+                <h2 className="text-xl font-semibold flex items-center gap-3">
+                  <span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+                    StockPilot AI
+                  </span>
+                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                    <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                    Secure Connection • SSL Encrypted
+                  </div>
+                </h2>
+              </div>
+
+              <div ref={chatContainerRef} className="h-[500px] overflow-y-auto p-6 space-y-6">
+                <AnimatePresence>
+                  {messages.map((message) => (
+                    <motion.div
+                      key={message.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`max-w-2xl p-4 rounded-2xl ${
+                        message.sender === 'bot'
+                          ? message.isError
+                            ? 'bg-red-500/10 border border-red-400/30'
+                            : 'bg-gray-700/30 border border-gray-600/30'
+                          : 'bg-blue-500/10 border border-blue-400/30'
+                      }`}>
+                        <div className="flex items-start gap-3">
+                          {message.sender === 'bot' && !message.isError && (
+                            <div className="bg-blue-400/10 p-2 rounded-lg">
+                              <FiBarChart2 className="text-blue-400 text-xl" />
+                            </div>
+                          )}
+                          <div className="space-y-2">
+                            {renderFormattedContent(message)}
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
                   ))}
+                </AnimatePresence>
+
+                {isBotTyping && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex items-center gap-2 text-gray-400"
+                  >
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                    </div>
+                    Analyzing inventory patterns...
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Chat Input Area */}
+              <div className="p-6 border-t border-gray-700/30">
+                <div className="space-y-4">
+                  {showSuggestions && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {quickQueries.map((query, index) => (
+                        <motion.button
+                          key={index}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => handleSuggestionClick(query)}
+                          className="text-left p-3 bg-gray-700/30 rounded-xl hover:bg-gray-700/50 transition-all text-sm flex items-center justify-between text-yellow-300"
+                        >
+                          {query}
+                          <FiChevronRight className="text-gray-400" />
+                        </motion.button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-4">
+                    <input
+                      id="chat-input"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder="Ask StockPilot about inventory, sales, or predictions..."
+                      className="flex-1 p-4 bg-gray-700/30 backdrop-blur-lg rounded-xl border border-gray-600/30 focus:border-blue-400/50 focus:ring-0 outline-none transition-all text-white"
+                    />
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleSend}
+                      className="p-4 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl flex items-center gap-2 hover:shadow-xl transition-all"
+                    >
+                      <FiSend className="text-white" />
+                      <span className="hidden md:inline">Send</span>
+                    </motion.button>
+                  </div>
                 </div>
-              ))}
-              {isBotTyping && (
-                <div className="text-blue-300 italic">
-                  StockPilot is analyzing your request...
-                </div>
-              )}
-            </div>
-            <div className="flex">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask StockPilot..."
-                className="flex-1 p-3 rounded-l-lg border-none outline-none bg-gray-600 text-white shadow-lg"
-              />
-              <button
-                onClick={handleSend}
-                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:bg-gradient-to-l p-3 rounded-r-lg transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
-              >
-                Send
-              </button>
-            </div>
+              </div>
+            </motion.div>
           </div>
         </div>
-      </div>
-    </MainLayout>
+      </MainLayout>
+    </ErrorBoundary>
   );
 };
 

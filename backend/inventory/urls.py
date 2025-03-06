@@ -9,6 +9,7 @@ from .views import (
     ai_analytics,  # ✅ AI-driven analytics
     ai_forecast_demand,  # ✅ Gemini AI demand forecasting
     ChatbotAPIView,  # ✅ AI-powered chatbot
+    inventory_forecast,  # ✅ Inventory analytics and forecasting
 )
 
 urlpatterns = [
@@ -37,4 +38,7 @@ urlpatterns = [
 
     # ✅ AI Chatbot
     path('chatbot/', ChatbotAPIView.as_view(), name='chatbot'),
+    
+    # ✅ Other Endpoints
+    path('inventory-forecast/', inventory_forecast, name='inventory_forecast'),
 ]

@@ -1,3 +1,5 @@
+// In /home/karan/Desktop/Ai_Inventory_project/frontend/src/contexts/AuthContext.jsx
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
@@ -19,7 +21,7 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(!!token);
 
-  const API_URL = 'http://127.0.0.1:8000/auth'; // ✅ Django backend URL
+  const API_URL = 'http://127.0.0.1:8000/auth'; // Django backend URL
 
   useEffect(() => {
     if (token) {
@@ -69,7 +71,7 @@ export const AuthProvider = ({ children }) => {
         username, 
         email, 
         password, 
-        confirm_password: confirmPassword // ✅ Send confirm password
+        confirm_password: confirmPassword // Send confirm password
       });
 
       const { access, refresh } = response.data;
@@ -88,6 +90,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const forgotPassword = async (email) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.post(`${API_URL}/forgot-password/`, { email });
+      setLoading(false);
+      return { success: true, message: "Password reset link has been sent to your email!" };
+    } catch (err) {
+      setLoading(false);
+      const errorMessage = err.response?.data?.error || "Failed to send reset link";
+      setError(errorMessage);
+      return { success: false, message: errorMessage };
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
@@ -97,7 +114,17 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isAuthenticated, login, signup, logout, loading, error }}>
+    <AuthContext.Provider value={{
+      user,
+      token,
+      isAuthenticated,
+      login,
+      signup,
+      logout,
+      forgotPassword,
+      loading,
+      error
+    }}>
       {children}
     </AuthContext.Provider>
   );
