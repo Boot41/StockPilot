@@ -31,35 +31,60 @@ const Forecast = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const forecastResponse = await fetch('http://127.0.0.1:8000/api/forecast/');
-        const geminiResponse = await fetch('http://127.0.0.1:8000/api/gemini-insights/');
+        setLoading(true);
+        setError(null);
+        
+        // Fetch data from both APIs
+        const [forecastResponse, geminiResponse] = await Promise.all([
+          fetch('http://127.0.0.1:8000/api/forecast/'),
+          fetch('http://127.0.0.1:8000/api/gemini-insights/')
+        ]);
 
-        if (!forecastResponse.ok || !geminiResponse.ok) {
-          throw new Error('Failed to fetch forecast data');
+        // Check if both responses are ok
+        if (!forecastResponse.ok) {
+          throw new Error(`Forecast API error: ${forecastResponse.status}`);
+        }
+        if (!geminiResponse.ok) {
+          throw new Error(`Gemini API error: ${geminiResponse.status}`);
         }
 
+        // Parse JSON responses
         const forecastData = await forecastResponse.json();
         const geminiData = await geminiResponse.json();
 
-        setForecastData(forecastData);
+        // Validate data structure
+        if (!forecastData?.forecast || !Array.isArray(forecastData.forecast)) {
+          throw new Error('Invalid forecast data format');
+        }
+        if (!geminiData?.forecast || !Array.isArray(geminiData.forecast)) {
+          throw new Error('Invalid gemini data format');
+        }
+
+        setForecastData(forecastData.forecast);
         setGeminiData(geminiData.forecast);
 
-        // Combine data based on product_name or a similar key
-        const combinedData = forecastData.map((forecastItem) => {
+        // Combine data with proper null checks
+        const combinedData = forecastData.forecast.map((forecastItem) => {
+          if (!forecastItem?.product_name) {
+            return null;
+          }
+          
           const geminiItem = geminiData.forecast.find(
-            (item) => item.product_name === forecastItem.product_name
+            (item) => item?.product_name === forecastItem.product_name
           );
+          
           return {
             ...forecastItem,
-            predicted_sales: geminiItem ? geminiItem.predicted_sales : 0,
-            confidence_score: geminiItem ? geminiItem.confidence_score : 0,
+            predicted_sales: geminiItem?.predicted_sales || 0,
+            confidence_score: geminiItem?.confidence_score || 0,
           };
-        });
+        }).filter(Boolean); // Remove any null items
 
         setFilteredData(combinedData);
-
       } catch (err) {
-        setError(err.message);
+        console.error('Forecast data fetch error:', err);
+        setError(err.message || 'Failed to fetch forecast data');
+        setFilteredData([]);
       } finally {
         setLoading(false);
       }
@@ -78,20 +103,41 @@ const Forecast = () => {
   }, [searchTerm, forecastData]);
 
   const getChartData = () => {
-    if (!filteredData) return {};
+    if (!Array.isArray(filteredData) || filteredData.length === 0) {
+      return {
+        labels: [],
+        datasets: [
+          {
+            label: 'Predicted Sales',
+            data: [],
+            backgroundColor: 'rgba(255, 206, 86, 0.5)',
+            borderColor: 'rgba(255, 206, 86, 1)',
+            borderWidth: 1,
+          },
+          {
+            label: 'Confidence Score',
+            data: [],
+            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1,
+          },
+        ],
+      };
+    }
+
     return {
-      labels: filteredData.map((item) => item.product_name),
+      labels: filteredData.map((item) => item?.product_name || 'Unknown'),
       datasets: [
         {
           label: 'Predicted Sales',
-          data: filteredData.map((item) => item.predicted_sales),
+          data: filteredData.map((item) => Number(item?.predicted_sales) || 0),
           backgroundColor: 'rgba(255, 206, 86, 0.5)',
           borderColor: 'rgba(255, 206, 86, 1)',
           borderWidth: 1,
         },
         {
           label: 'Confidence Score',
-          data: filteredData.map((item) => item.confidence_score),
+          data: filteredData.map((item) => Number(item?.confidence_score) || 0),
           backgroundColor: 'rgba(75, 192, 192, 0.5)',
           borderColor: 'rgba(75, 192, 192, 1)',
           borderWidth: 1,
