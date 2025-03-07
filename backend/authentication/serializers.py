@@ -37,11 +37,19 @@ class LoginSerializer(serializers.Serializer):
 
     def validate(self, data):
         """Authenticate user and return JWT token"""
-        user = authenticate(username=data['username'], password=data['password'])
-        if not user:
+        try:
+            user = User.objects.get(username=data['username'])
+            if user.check_password(data['password']):
+                if not user.is_active:
+                    raise serializers.ValidationError("This account is disabled.")
+                return {
+                    "user": {"username": user.username, "email": user.email},
+                    "refresh": str(RefreshToken.for_user(user)),
+                    "access": str(RefreshToken.for_user(user).access_token),
+                }
             raise serializers.ValidationError("Invalid username or password.")
-        if not user.is_active:
-            raise serializers.ValidationError("This account is disabled.")
+        except User.DoesNotExist:
+            raise serializers.ValidationError("Invalid username or password.")
         refresh = RefreshToken.for_user(user)
         return {
             "user": {"username": user.username, "email": user.email},

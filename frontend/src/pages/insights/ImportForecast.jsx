@@ -169,7 +169,7 @@ const ProductList = ({ title, items, type }) => {
       {isValid ? (
         <div className="space-y-3">
           {items.map((item, i) => (
-            <div key={i} className="p-3 bg-gray-700/20 rounded-lg hover:bg-gray-700/40 transition-colors">
+            <div key={`${type}-${item.product || i}`} className="p-3 bg-gray-700/20 rounded-lg hover:bg-gray-700/40 transition-colors">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-gray-300 font-medium">
                   {item.product || `Product ${i + 1}`}
@@ -200,6 +200,8 @@ const ImportForecast = () => {
   const [loading, setLoading] = useState(false);
   const [forecastData, setForecastData] = useState(null);
 
+  const API_URL = 'http://127.0.0.1:8000/api/inventory-forecast/';
+
   const handleUpload = async () => {
     if (!file) return setError('Please select a file');
     
@@ -210,29 +212,34 @@ const ImportForecast = () => {
     formData.append('file', file);
 
     try {
-      const res = await axios.post(
-        'http://127.0.0.1:8000/inventory-forecast/',
-        formData,
-        {
-          headers: { 'Content-Type': 'multipart/form-data' },
-          timeout: 30000
-        }
-      );
-      
-      if (!res.data?.forecast || !Array.isArray(res.data.forecast)) {
+      // First, upload to inventory-forecast endpoint
+      const forecastResponse = await axios.post(API_URL, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 30000
+      });
+
+      const forecastData = forecastResponse.data;
+
+      // Initialize chatbot context with the uploaded data
+      await axios.post('http://127.0.0.1:8000/api/chatbot/', {
+        contents: [{ parts: [{ text: 'Initialize context with uploaded inventory data' }] }],
+        uploaded_data: forecastData
+      });
+
+      if (!forecastData?.forecast || !Array.isArray(forecastData.forecast)) {
         throw new Error('Invalid data format from server');
       }
 
       setForecastData({
-        forecast: res.data.forecast.map(item => ({
+        forecast: forecastData.forecast.map(item => ({
           product: item.product_name,
           predicted_sales: item.predicted_sales,
           confidence: item.confidence_score
         })),
         analytics: {
-          inventory_health: res.data.inventory_analysis || {},
-          fast_moving: res.data.fast_moving_products || [],
-          slow_moving: res.data.slow_moving_products || []
+          inventory_health: forecastData.inventory_analysis || {},
+          fast_moving: forecastData.fast_moving_products || [],
+          slow_moving: forecastData.slow_moving_products || []
         }
       });
     } catch (err) {

@@ -1,5 +1,6 @@
 // In /home/karan/Desktop/Ai_Inventory_project/frontend/src/pages/auth/ResetPassword.jsx
 import React, { useState } from 'react';
+import API_ENDPOINTS from '../../config/api';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -20,7 +21,7 @@ const ResetPassword = () => {
     }
 
     try {
-      const response = await axios.post(`http://127.0.0.1:8000/auth/reset-password/${uidb64}/${token}/`, {
+      const response = await axios.post(`${API_ENDPOINTS.AUTH}/reset-password/${uidb64}/${token}/`, {
         password,
         confirm_password: confirmPassword
       });

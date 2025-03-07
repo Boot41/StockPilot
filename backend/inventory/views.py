@@ -105,6 +105,7 @@ class OrderList(generics.ListCreateAPIView):
 class SingleOrderList(generics.RetrieveUpdateDestroyAPIView):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
+    http_method_names = ['get', 'put', 'patch', 'delete']
 
 # --------------------------------------------------
 # Order Item Views
@@ -160,26 +161,61 @@ class SingleStockAlert(generics.RetrieveUpdateDestroyAPIView):
 # AI-Powered Demand Forecasting APIs
 # --------------------------------------------------
 @api_view(['GET'])
+@parser_classes([JSONParser])
 def forecast_sales(request):
-    """Forecast sales data for the last 30 days using simple average."""
+    """
+    Forecast sales data for the last 30 days on a per-product basis using a simple average.
+    Returns a list of forecasts with:
+      - product_name
+      - predicted_sales (average sales)
+      - confidence_score (dummy value, adjust as needed)
+    """
     try:
         start_date = now() - timedelta(days=30)
         orders = Order.objects.filter(order_date__gte=start_date)
-        sales_data = []
+        logger.info("Number of orders in the last 30 days: %s", orders.count())
+
+        product_sales = {}
         for order in orders:
+            # Check if 'items' exists
+            order_items = getattr(order, 'items', None)
+            if order_items is None:
+                logger.warning("Order %s has no related 'items'. Check your related_name in the model.", order.id)
+                continue
+
             for item in order.items.all():
-                sales_data.append(item.quantity)
-        if sales_data:
-            avg_sales = np.mean(sales_data)
-            forecast_data = {"forecast": avg_sales}
+                product_id = item.product.id
+                product_name = item.product.name
+                if product_id not in product_sales:
+                    product_sales[product_id] = {"product_name": product_name, "sales": []}
+                product_sales[product_id]["sales"].append(item.quantity)
+
+        logger.info("Aggregated product sales: %s", product_sales)
+
+        forecast_results = []
+        for product_id, data in product_sales.items():
+            if data["sales"]:
+                avg_sales = np.mean(data["sales"])
+                forecast_results.append({
+                    "product_name": data["product_name"],
+                    "predicted_sales": round(avg_sales, 2),
+                    "confidence_score": 0.8  # Dummy confidence score
+                })
+        
+        if forecast_results:
+            logger.info("Forecast results: %s", forecast_results)
+            return Response({"forecast": forecast_results}, status=status.HTTP_200_OK)
         else:
-            forecast_data = {"message": "No sales data found."}
-        return Response(forecast_data, status=status.HTTP_200_OK)
+            logger.info("No sales data found for forecasting.")
+            return Response({"message": "No sales data found."}, status=status.HTTP_200_OK)
+    
     except Exception as e:
         logger.error("Error forecasting sales: %s", e)
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 @api_view(['GET'])
+@parser_classes([JSONParser])
 def ai_forecast_demand(request):
     """AI-powered demand forecasting using Gemini API."""
     try:
@@ -223,6 +259,7 @@ Return ONLY valid JSON with no extra commentary.
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
+@parser_classes([JSONParser])
 def ai_analytics(request):
     """AI-powered analytics using Gemini API with embedded analytics data."""
     try:
@@ -312,8 +349,10 @@ class ChatbotAPIView(APIView):
         try:
             data = json.loads(request.body)
             
-            # ✅ Extract Query from Nested JSON
+            # ✅ Extract Query and Uploaded Data from Nested JSON
             contents = data.get("contents", [])
+            uploaded_data = data.get("uploaded_data", None)
+            
             if contents and isinstance(contents, list) and "parts" in contents[0] and isinstance(contents[0]["parts"], list):
                 query = contents[0]["parts"][0].get("text", "").strip()
             else:
@@ -322,40 +361,51 @@ class ChatbotAPIView(APIView):
             if not query:
                 return Response({"error": "Query cannot be empty"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # 🔹 Fetch Inventory and Sales Data (Last 30 Days)
-            thirty_days_ago = now() - timedelta(days=30)
+            # 🔹 Initialize variables for database data
+            inventory = []
+            sales_data = []
+            best_selling = []
+            slow_moving = []
+            stock_trends = []
+            low_stock = []
+            total_revenue = 0
+            has_database_data = False
 
-            # Get product data
-            inventory = list(Product.objects.values("id", "name", "category", "price", "quantity_in_stock", "threshold_level"))
+            try:
+                # Try to fetch database data if available
+                thirty_days_ago = now() - timedelta(days=30)
+                inventory = list(Product.objects.values("id", "name", "category", "price", "quantity_in_stock", "threshold_level"))
+                
+                if inventory:  # Only proceed if we have inventory data
+                    has_database_data = True
+                    # Get sales data for the last 30 days with related Order data
+                    sales_data = list(OrderItem.objects.filter(order__order_date__gte=thirty_days_ago)
+                                  .select_related('order')
+                                  .values("product_id", "quantity", "order__order_date", "order__total_amount"))
 
-            # Get sales data for the last 30 days with related Order data
-            sales_data = list(OrderItem.objects.filter(order__order_date__gte=thirty_days_ago)
-                              .select_related('order')  # Pre-fetch related Order
-                              .values("product_id", "quantity", "order__order_date", "order__total_amount"))
+                    # Convert Decimal fields for JSON
+                    for prod in inventory:
+                        prod["price"] = float(prod["price"])
+                        prod["quantity_in_stock"] = int(prod["quantity_in_stock"])
+                        prod["threshold_level"] = int(prod["threshold_level"])
 
-            # Convert Decimal fields for JSON
-            for prod in inventory:
-                prod["price"] = float(prod["price"])
-                prod["quantity_in_stock"] = int(prod["quantity_in_stock"])
-                prod["threshold_level"] = int(prod["threshold_level"])
+                    for sale in sales_data:
+                        sale["order__total_amount"] = float(sale["order__total_amount"])
+                        sale["order__order_date"] = sale["order__order_date"].isoformat()
 
-            for sale in sales_data:
-                sale["order__total_amount"] = float(sale["order__total_amount"])
-                sale["order__order_date"] = sale["order__order_date"].isoformat()  # Corrected field
+                    # Calculate database insights
+                    total_revenue = sum(item["order__total_amount"] for item in sales_data)
 
-            # 🔹 Calculate Insights
-            total_revenue = sum(item["order__total_amount"] for item in sales_data)
+                    product_sales = {}
+                    for item in sales_data:
+                        product_sales[item["product_id"]] = product_sales.get(item["product_id"], 0) + item["quantity"]
 
-            product_sales = {}
-            for item in sales_data:
-                product_sales[item["product_id"]] = product_sales.get(item["product_id"], 0) + item["quantity"]
-
-            best_selling = [prod["name"] for prod in inventory if product_sales.get(prod["id"], 0) > 50]
-            slow_moving = [prod["name"] for prod in inventory if product_sales.get(prod["id"], 0) < 10]
-            stock_trends = [{"name": prod["name"], "stock": prod["quantity_in_stock"]} for prod in inventory]
-
-            # 🔹 Identify Low-Stock Items
-            low_stock = [prod["name"] for prod in inventory if prod["quantity_in_stock"] < prod["threshold_level"]]
+                    best_selling = [prod["name"] for prod in inventory if product_sales.get(prod["id"], 0) > 50]
+                    slow_moving = [prod["name"] for prod in inventory if product_sales.get(prod["id"], 0) < 10]
+                    stock_trends = [{"name": prod["name"], "stock": prod["quantity_in_stock"]} for prod in inventory]
+                    low_stock = [prod["name"] for prod in inventory if prod["quantity_in_stock"] < prod["threshold_level"]]
+            except Exception as e:
+                logger.warning(f"Failed to fetch database data: {e}. Proceeding with uploaded data only.")
 
             # 🔹 AI Prompt
             prompt = f"""
@@ -364,20 +414,35 @@ class ChatbotAPIView(APIView):
             ### User Query:
             "{query}"
 
-            ### Inventory Overview:
+            {f'''### Database Inventory Overview:
             {json.dumps(inventory)}
 
-            ### Sales Data (Last 30 Days):
+            ### Database Sales Data (Last 30 Days):
             {json.dumps(sales_data)}
 
-            ### Insights:
+            ### Database Insights:
             - Best-selling products: {json.dumps(best_selling)}
             - Slow-moving products: {json.dumps(slow_moving)}
             - Stock trends: {json.dumps(stock_trends)}
             - Low-stock items: {json.dumps(low_stock)}
-            - Total revenue: {total_revenue}
+            - Total revenue: {total_revenue}''' if has_database_data else '### Note: No database data available. Working with uploaded data only.'}
+
+            {f'''### Uploaded Data:
+            {json.dumps(uploaded_data)}''' if uploaded_data else ''}
+
+            ### Context:
+            {"Working with both database and uploaded data." if has_database_data and uploaded_data else
+             "Working with uploaded data only." if uploaded_data else
+             "Working with database data only." if has_database_data else
+             "No data available. Please upload inventory data to begin analysis."}
 
             ### AI Response Guidelines:
+            - If no data is available, guide the user to upload their inventory data.
+            - If only uploaded data is available, focus on analyzing that data comprehensively.
+            - If both database and uploaded data are available:
+              * If the user asks about uploaded data, focus on analyzing that data.
+              * If the user asks about general inventory, use the database data.
+              * If relevant, combine insights from both sources.
             - Answer concisely based on available data.
             - Use structured JSON output:
             
@@ -429,6 +494,14 @@ def inventory_forecast(request):
         # Handle JSON input
         if request.content_type == "application/json":
             raw_data = request.data.get("data")
+            # Validate required fields in JSON data
+            if raw_data:
+                for item in raw_data:
+                    if not isinstance(item, dict) or not all(k in item for k in ['product_name', 'stock', 'sales_last_month']):
+                        return Response(
+                            {"error": "Malformed JSON data. Each item must have product_name, stock, and sales_last_month fields"}, 
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
 
         # Handle file upload (CSV/Excel)
         elif request.content_type.startswith("multipart/form-data"):

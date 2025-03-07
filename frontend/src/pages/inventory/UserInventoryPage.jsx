@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import ErrorBoundary from '../../components/ErrorBoundary';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = "http://localhost:8000/api";
 
 const UserInventoryPage = () => {
   const [activeTab, setActiveTab] = useState("products");
@@ -16,6 +16,7 @@ const UserInventoryPage = () => {
   const [groupedProducts, setGroupedProducts] = useState({});
   const [orders, setOrders] = useState([]);
   const [stockAlerts, setStockAlerts] = useState([]);
+  const [inventory, setInventory] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [showAddProduct, setShowAddProduct] = useState(false);
@@ -33,6 +34,7 @@ const UserInventoryPage = () => {
     fetchProducts();
     fetchOrders();
     fetchStockAlerts();
+    fetchInventory();
   }, []);
 
   useEffect(() => {
@@ -51,6 +53,8 @@ const UserInventoryPage = () => {
       setProducts(response.data);
     } catch (error) {
       console.error("Error fetching products:", error);
+      // Show user-friendly error message
+      alert("Failed to fetch products. Please try again later.");
     }
   };
 
@@ -60,26 +64,49 @@ const UserInventoryPage = () => {
       setOrders(response.data);
     } catch (error) {
       console.error("Error fetching orders:", error);
+      alert("Failed to fetch orders. Please try again later.");
     }
   };
 
   const fetchStockAlerts = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/stock-alert/`);
+      const response = await axios.get(`${API_BASE_URL}/inventory/alerts/`);
       setStockAlerts(response.data);
     } catch (error) {
       console.error("Error fetching stock alerts:", error);
+      alert("Failed to fetch stock alerts. Please try again later.");
+    }
+  };
+
+  const fetchInventory = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/inventory/`);
+      setInventory(response.data);
+    } catch (error) {
+      console.error("Error fetching inventory:", error);
+      alert("Failed to fetch inventory data. Please try again later.");
     }
   };
 
   const handleAddProduct = async () => {
     try {
       await axios.post(`${API_BASE_URL}/product/`, newProduct);
-      fetchProducts();
-      setNewProduct({ ...newProduct, name: "", category: "" });
+      await fetchProducts();
+      await fetchInventory(); // Refresh inventory after adding product
+      setNewProduct({
+        name: "",
+        category: "",
+        description: "",
+        quantity_in_stock: 0,
+        price: 0,
+        threshold_level: 0,
+        extra_charge_percent: 5,
+      });
       setShowAddProduct(false);
+      alert("Product added successfully!");
     } catch (error) {
       console.error("Error adding product:", error);
+      alert("Failed to add product. Please try again.");
     }
   };
 

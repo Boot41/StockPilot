@@ -16,6 +16,10 @@ class Product(models.Model):
     extra_charge_percent = models.DecimalField(max_digits=5, decimal_places=2, default=5.00)
     date_added = models.DateTimeField(auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.check_stock_alert()
+
     def __str__(self):
         return f"{self.name} | {self.price} | Stock: {self.quantity_in_stock}"
 
@@ -66,9 +70,10 @@ class InventoryTransaction(models.Model):
         Automatically calculates transaction cost and updates product stock accordingly.
         Raises a ValidationError if there's insufficient stock for a sale.
         """
-        base_price = self.product.price
-        extra_charge = (base_price * Decimal(self.extra_charge_percent)) / Decimal(100)
-        self.transaction_cost = (base_price + extra_charge) * self.quantity
+        base_price = Decimal(str(self.product.price))
+        extra_charge_percent = Decimal(str(self.extra_charge_percent))
+        extra_charge = (base_price * extra_charge_percent) / Decimal('100')
+        self.transaction_cost = (base_price + extra_charge) * Decimal(str(self.quantity))
 
         if self.transaction_type == 'sale':
             if self.product.quantity_in_stock < self.quantity:
@@ -123,7 +128,7 @@ class OrderItem(models.Model):
         Sets the price for the order item and updates the product stock accordingly.
         """
         if not self.price:
-            self.price = self.product.price * Decimal(self.quantity)
+            self.price = Decimal(str(self.product.price)) * Decimal(str(self.quantity))
         
         if self.product.quantity_in_stock < self.quantity:
             raise ValidationError({"error": f"Not enough stock for {self.product.name}."})
@@ -181,3 +186,37 @@ def inventory_health():
         "low_stock_items": StockAlert.low_stock_items(),
         "out_of_stock_items": StockAlert.out_of_stock_items()
     }
+
+
+# ✅ Chat Session Model
+class ChatSession(models.Model):
+    title = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    uploaded_data = models.JSONField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Chat {self.id} - {self.title or 'Untitled'} ({self.created_at.strftime('%Y-%m-%d %H:%M')})"
+
+    class Meta:
+        ordering = ['-updated_at']
+
+
+# ✅ Chat Message Model
+class ChatMessage(models.Model):
+    SENDER_CHOICES = [
+        ('user', 'User'),
+        ('bot', 'Bot'),
+    ]
+
+    session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name='messages')
+    sender = models.CharField(max_length=10, choices=SENDER_CHOICES)
+    text = models.TextField()
+    data = models.JSONField(null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.sender} message in {self.session}"
+
+    class Meta:
+        ordering = ['timestamp']

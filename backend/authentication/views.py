@@ -20,11 +20,30 @@ from rest_framework.decorators import action
 from rest_framework.views import APIView
 
 
+from django.middleware.csrf import get_token
+
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
+from django.utils.decorators import method_decorator
+
 class AuthViewSet(viewsets.ViewSet):
     """
     ViewSet for User Authentication (Register, Login, Forgot Password)
     """
     permission_classes = [AllowAny]
+
+    @method_decorator(ensure_csrf_cookie)
+    @action(detail=False, methods=['get'])
+    def get_csrf_token(self, request):
+        """ Get CSRF token for the client """
+        token = get_token(request)
+        response = Response({
+            'csrfToken': token,
+            'detail': 'CSRF cookie set'
+        })
+        response['X-CSRFToken'] = token
+        response['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
+        response['Access-Control-Allow-Credentials'] = 'true'
+        return response
 
     @action(detail=False, methods=['post'])
     def register(self, request):
@@ -33,7 +52,7 @@ class AuthViewSet(viewsets.ViewSet):
         if serializer.is_valid():
             user = serializer.save()
             refresh = RefreshToken.for_user(user)
-            return Response({
+            response = Response({
                 "user": {
                     "username": user.username,
                     "email": user.email
@@ -41,6 +60,8 @@ class AuthViewSet(viewsets.ViewSet):
                 "refresh": str(refresh),
                 "access": str(refresh.access_token),
             }, status=status.HTTP_201_CREATED)
+            response['Access-Control-Allow-Credentials'] = 'true'
+            return response
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['post'])
@@ -48,7 +69,10 @@ class AuthViewSet(viewsets.ViewSet):
         """ User Login """
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
-            return Response(serializer.validated_data, status=status.HTTP_200_OK)
+            response = Response(serializer.validated_data, status=status.HTTP_200_OK)
+            response['Access-Control-Allow-Credentials'] = 'true'
+            return response
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['post'], url_path='forgot-password')

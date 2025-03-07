@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import MainLayout from '../components/layout/MainLayout';
-import { FiSend, FiChevronRight, FiBarChart2, FiPackage, FiTrendingUp } from 'react-icons/fi';
+import { FiSend, FiChevronRight, FiBarChart2, FiPackage, FiTrendingUp, FiUpload } from 'react-icons/fi';
 
-const API_BASE_URL = 'http://localhost:8000';
+const FORECAST_URL = 'http://127.0.0.1:8000/api/inventory-forecast/';
+const CHATBOT_URL = 'http://127.0.0.1:8000/api/chatbot/';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -45,26 +46,91 @@ const markdownComponents = {
 };
 
 const Dashboard = () => {
+  const [uploadedData, setUploadedData] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+  const [showQuickQueries, setShowQuickQueries] = useState(true);
   const [messages, setMessages] = useState([{
     id: 1,
     sender: 'bot',
-    text: `Welcome to StockPilot Enterprise AI. How can I assist with your inventory management today?`,
+    text: `Welcome to StockPilot Enterprise AI! ${!uploadedData ? 'To get started, upload your inventory data using the upload button below.' : 'How can I assist with your inventory management today?'}`,
     data: null
   }]);
   const [input, setInput] = useState('');
   const [isBotTyping, setIsBotTyping] = useState(false);
   const chatContainerRef = useRef(null);
 
-  const quickQueries = [
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    setIsUploading(true);
+    setUploadError(null);
+
+    try {
+      // First, upload to inventory-forecast endpoint
+      const forecastResponse = await fetch(FORECAST_URL, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!forecastResponse.ok) throw new Error('Upload failed');
+
+      const forecastData = await forecastResponse.json();
+      setUploadedData(forecastData);
+      
+      // Initialize chatbot context with the uploaded data
+      const chatbotResponse = await fetch(CHATBOT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: 'Initialize context with uploaded inventory data' }] }],
+          uploaded_data: forecastData
+        })
+      });
+
+      if (!chatbotResponse.ok) {
+        console.warn('Failed to initialize chatbot context, but file upload succeeded');
+      }
+
+      // Add a system message about successful upload
+      setMessages(prev => [...prev, {
+        id: Date.now(),
+        sender: 'bot',
+        text: 'Inventory data uploaded successfully! You can now ask questions about your uploaded data.',
+        data: forecastData
+      }]);
+    } catch (error) {
+      setUploadError('Failed to upload file. Please try again.');
+      console.error('Upload error:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const getQuickQueries = () => {
+    if (!uploadedData) {
+      return [
+        'How do I upload my inventory data?',
+        'What file formats do you support?',
+        'How can you help me analyze my inventory?',
+        'What insights can you provide?'
+      ];
+    }
+    return [
     'Show current inventory levels',
     'Display sales trends for last quarter',
     'Predict demand for next month',
     'Show low-stock alerts',
     'Generate inventory health report',
     'Analyze supplier performance'
-  ];
+    ];
+  };
 
   const showSuggestions = messages.filter(m => m.sender === 'user').length === 0;
+  const quickQueriesList = getQuickQueries();
 
   const scrollToBottom = useCallback(() => {
     chatContainerRef.current?.scrollTo({
@@ -130,13 +196,20 @@ const Dashboard = () => {
   };
 
   const getChatbotResponse = async (query) => {
+    // Include uploaded data context in the request if available
+    const requestData = {
+      contents: [{
+        parts: [{ text: query }]
+      }],
+      uploaded_data: uploadedData
+    };
+    console.log('Request Data:', requestData);
+    console.log('Query:', query);
     try {
-      const response = await fetch(`${API_BASE_URL}/chatbot/`, {
+      const response = await fetch(CHATBOT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: query }] }]
-        }),
+        body: JSON.stringify(requestData)
       });
 
       if (!response.ok) {
@@ -258,7 +331,31 @@ const Dashboard = () => {
                 </h2>
               </div>
 
-              <div ref={chatContainerRef} className="h-[500px] overflow-y-auto p-6 space-y-6">
+              <div ref={chatContainerRef} className="h-[calc(100vh-16rem)] overflow-y-auto p-6 space-y-6">
+                {/* File Upload Section - Only show if no data uploaded */}
+                {!uploadedData && (
+                  <div className="mb-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700/30">
+                    <label htmlFor="file-upload" className="flex items-center justify-center w-full p-4 border-2 border-dashed border-gray-600 rounded-lg cursor-pointer hover:border-blue-500 transition-colors">
+                      <input
+                        id="file-upload"
+                        type="file"
+                        className="hidden"
+                        accept=".csv,.xlsx,.xls"
+                        onChange={handleFileUpload}
+                        disabled={isUploading}
+                      />
+                      <div className="flex flex-col items-center">
+                        <FiUpload className="w-6 h-6 mb-2 text-gray-400" />
+                        <span className="text-sm text-gray-400">
+                          {isUploading ? 'Uploading...' : 'Upload Inventory Data (CSV/Excel)'}
+                        </span>
+                      </div>
+                    </label>
+                    {uploadError && (
+                      <div className="mt-2 text-red-500 text-sm text-center">{uploadError}</div>
+                    )}
+                  </div>
+                )}
                 <AnimatePresence>
                   {messages.map((message) => (
                     <motion.div
@@ -310,15 +407,16 @@ const Dashboard = () => {
               <div className="p-6 border-t border-gray-700/30">
                 <div className="space-y-4">
                   {showSuggestions && (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {quickQueries.map((query, index) => (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {quickQueriesList.slice(0, 4).map((query, index) => (
                         <motion.button
                           key={index}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
+                          whileHover={{ scale: 1.01 }}
+                          whileTap={{ scale: 0.99 }}
                           onClick={() => handleSuggestionClick(query)}
-                          className="text-left p-3 bg-gray-700/30 rounded-xl hover:bg-gray-700/50 transition-all text-sm flex items-center justify-between text-yellow-300"
+                          className="text-left p-2 bg-gray-700/30 rounded-lg hover:bg-gray-700/50 transition-all text-sm flex items-center gap-2 text-blue-300"
                         >
+                          <FiChevronRight />
                           {query}
                           <FiChevronRight className="text-gray-400" />
                         </motion.button>

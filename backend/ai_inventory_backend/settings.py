@@ -11,10 +11,78 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Secret key and debug mode
 SECRET_KEY = os.getenv("SECRET_KEY", "default-secret-key")
-DEBUG = os.getenv("DEBUG", "True") == "True"
+DEBUG = os.getenv("DEBUG", "True").lower() == "true"  # Ensure boolean conversion
 
-# Allowed hosts
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
+# Allowed hosts and CORS configuration
+ALLOWED_HOSTS = ['*']  # For development only
+
+# CORS Configuration
+CORS_ORIGIN_ALLOW_ALL = False  # More restrictive
+CORS_ALLOW_CREDENTIALS = True
+
+# Allowed origins (update to include your React dev server on port 5173)
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:5173',  # Added for React dev server
+    'http://127.0.0.1:5173',  # Added for React dev server
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
+
+# Additional CORS settings
+CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# CSRF Configuration
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://0.0.0.0:8000",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://0.0.0.0:3000",
+    "http://localhost:5173",  # Added for React dev server
+    "http://127.0.0.1:5173",  # Added for React dev server
+]
+
+# CSRF Cookie settings
+CSRF_COOKIE_NAME = 'csrftoken'
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SECURE = False  # Set to True in production
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_USE_SESSIONS = False
+CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
+CSRF_COOKIE_DOMAIN = None
+CSRF_COOKIE_PATH = '/'
+CSRF_COOKIE_AGE = 31449600  # 1 year in seconds
+
+# Session settings
+SESSION_COOKIE_SECURE = False  # Set to True in production
+SESSION_COOKIE_SAMESITE = 'Lax'
+
+# Security settings for development
+SESSION_COOKIE_SECURE = False
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = None
 
 # Gemini API Key
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -40,7 +108,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # Must be placed high
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -95,6 +163,7 @@ USE_TZ = True
 
 # Static files
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Django REST framework settings
@@ -121,16 +190,40 @@ SIMPLE_JWT = {
 EMAIL_USE_TLS = True
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "karan.singhrawat@think41.com")  
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")  
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "karan.singhrawat@think41.com")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-# CORS settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # React frontend URL
-    "http://127.0.0.1:5173",  # React frontend URL
+# Additional CORS preflight settings
+CORS_PREFLIGHT_MAX_AGE = 86400  # 24 hours
+
+# Additional CORS Headers (redefining if necessary)
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'cache-control',
+    'pragma',
 ]
-CORS_ALLOW_CREDENTIALS = True
+CORS_EXPOSE_HEADERS = [
+    'content-type',
+    'x-csrftoken',
+]
+
+# Security settings
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE = False  # Set to True in production
+CSRF_COOKIE_SECURE = False     # Set to True in production
+CSRF_COOKIE_HTTPONLY = True
+CSRF_USE_SESSIONS = True
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = 'Lax'
 
 # Frontend URL for password reset link
-FRONTEND_URL = 'http://localhost:5173'  # Update if needed
+FRONTEND_URL = 'http://localhost:8000'  # Update if needed

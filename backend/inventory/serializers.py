@@ -34,7 +34,7 @@ class InventorySerializer(serializers.ModelSerializer):
         model = InventoryTransaction
         fields = [
             'id', 'product', 'product_id', 'quantity', 'transaction_type',
-            'transaction_cost', 'transaction_date', 'transaction_month'
+            'transaction_cost', 'transaction_date', 'transaction_month', 'extra_charge_percent'
         ]
 
     def get_transaction_month(self, obj):
@@ -55,15 +55,9 @@ class InventorySerializer(serializers.ModelSerializer):
             transaction_cost = (product.price + extra_charge) * quantity
             validated_data['transaction_cost'] = transaction_cost
 
-            # Handle inventory update based on transaction type
-            if transaction_type == "restock":
-                product.quantity_in_stock += quantity
-            elif transaction_type == "sale":
-                if product.quantity_in_stock < quantity:
-                    raise serializers.ValidationError({"error": f"Not enough stock for {product.name}."})
-                product.quantity_in_stock -= quantity
-
-            product.save()
+            # Validate stock for sales
+            if transaction_type == "sale" and product.quantity_in_stock < quantity:
+                raise serializers.ValidationError({"error": f"Not enough stock for {product.name}."})
 
             # Generate stock alerts if threshold is crossed
             if product.quantity_in_stock < product.threshold_level:
@@ -140,14 +134,52 @@ class OrderSerializer(serializers.ModelSerializer):
         except Exception:
             return 0
 
+    def validate(self, data):
+        # Skip validation if only updating status
+        if len(data) == 1 and 'status' in data:
+            return data
+
+        items_data = data.get('items', [])
+        if not items_data:
+            raise serializers.ValidationError({"error": "Order must have at least one item."})
+
+        # Validate stock for all items before creating order
+        for item_data in items_data:
+            product = item_data['product']
+            quantity = item_data['quantity']
+            if product.quantity_in_stock < quantity:
+                raise serializers.ValidationError(
+                    {"error": f"Not enough stock for {product.name}. Available: {product.quantity_in_stock}"}
+                )
+        return data
+
     def create(self, validated_data):
         try:
-            items_data = validated_data.pop('items', [])
+            items_data = validated_data.pop('items')
             order = Order.objects.create(**validated_data)
+            
+            # Create all items after validating the entire order
             for item_data in items_data:
-                item_data['order'] = order
-                OrderItemSerializer().create(item_data)
+                OrderItem.objects.create(order=order, **item_data)
+            
+            # Update order total
+            order.update_total_amount()
             return order
+        except Exception as e:
+            raise serializers.ValidationError({"error": str(e)})
+            
+    def validate_status(self, value):
+        if value not in ['pending', 'completed']:
+            raise serializers.ValidationError("Status must be either 'pending' or 'completed'")
+        return value
+
+    def update(self, instance, validated_data):
+        try:
+            # Only allow updating status
+            if 'status' in validated_data:
+                instance.status = validated_data['status']
+                instance.save()
+            return instance
         except Exception as e:
             raise serializers.ValidationError({"error": str(e)})
 

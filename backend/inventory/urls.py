@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.generic import TemplateView
 from .views import (
     ProductList, SingleProductList,
     InventoryList, SingleInventoryList,
@@ -13,6 +14,8 @@ from .views import (
 )
 
 urlpatterns = [
+    # Serve frontend
+    path('', TemplateView.as_view(template_name='index.html'), name='index'),
     # ✅ Product Endpoints
     path('product/', ProductList.as_view(), name='product-list'),
     path('product/<int:pk>/', SingleProductList.as_view(), name='single-product'),

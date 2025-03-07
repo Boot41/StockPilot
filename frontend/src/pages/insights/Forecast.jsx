@@ -12,7 +12,7 @@ import {
   BarElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
 } from 'chart.js';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -20,23 +20,44 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 const Forecast = () => {
   const [timeframe, setTimeframe] = useState('6 months');
   const [forecastData, setForecastData] = useState(null);
+  const [geminiData, setGeminiData] = useState(null);
   const [filteredData, setFilteredData] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [bgGradient] = useState("bg-gradient-to-b from-blue-900 to-gray-900");
+  const [bgGradient] = useState('bg-gradient-to-b from-blue-900 to-gray-900');
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchForecastData = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('http://127.0.0.1:8000/gemini-insights/');
-        if (!response.ok) {
+        const forecastResponse = await fetch('http://127.0.0.1:8000/api/forecast/');
+        const geminiResponse = await fetch('http://127.0.0.1:8000/api/gemini-insights/');
+
+        if (!forecastResponse.ok || !geminiResponse.ok) {
           throw new Error('Failed to fetch forecast data');
         }
-        const data = await response.json();
-        setForecastData(data.forecast);
-        setFilteredData(data.forecast);
+
+        const forecastData = await forecastResponse.json();
+        const geminiData = await geminiResponse.json();
+
+        setForecastData(forecastData);
+        setGeminiData(geminiData.forecast);
+
+        // Combine data based on product_name or a similar key
+        const combinedData = forecastData.map((forecastItem) => {
+          const geminiItem = geminiData.forecast.find(
+            (item) => item.product_name === forecastItem.product_name
+          );
+          return {
+            ...forecastItem,
+            predicted_sales: geminiItem ? geminiItem.predicted_sales : 0,
+            confidence_score: geminiItem ? geminiItem.confidence_score : 0,
+          };
+        });
+
+        setFilteredData(combinedData);
+
       } catch (err) {
         setError(err.message);
       } finally {
@@ -44,12 +65,12 @@ const Forecast = () => {
       }
     };
 
-    fetchForecastData();
+    fetchData();
   }, []);
 
   useEffect(() => {
     if (forecastData) {
-      const filtered = forecastData.filter(item =>
+      const filtered = forecastData.filter((item) =>
         item.product_name.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredData(filtered);
@@ -59,22 +80,22 @@ const Forecast = () => {
   const getChartData = () => {
     if (!filteredData) return {};
     return {
-      labels: filteredData.map(item => item.product_name),
+      labels: filteredData.map((item) => item.product_name),
       datasets: [
         {
           label: 'Predicted Sales',
-          data: filteredData.map(item => item.predicted_sales),
+          data: filteredData.map((item) => item.predicted_sales),
           backgroundColor: 'rgba(255, 206, 86, 0.5)',
           borderColor: 'rgba(255, 206, 86, 1)',
           borderWidth: 1,
         },
         {
           label: 'Confidence Score',
-          data: filteredData.map(item => item.confidence_score),
+          data: filteredData.map((item) => item.confidence_score),
           backgroundColor: 'rgba(75, 192, 192, 0.5)',
           borderColor: 'rgba(75, 192, 192, 1)',
           borderWidth: 1,
-        }
+        },
       ],
     };
   };
@@ -84,7 +105,7 @@ const Forecast = () => {
     maintainAspectRatio: false,
     animation: {
       duration: 800,
-      easing: 'easeOutBounce'
+      easing: 'easeOutBounce',
     },
     plugins: {
       legend: {
@@ -99,15 +120,15 @@ const Forecast = () => {
           label: (context) => {
             const label = context.dataset.label || '';
             return `${label}: ${context.parsed.y}`;
-          }
-        }
-      }
+          },
+        },
+      },
     },
     hover: {
       onHover: (event, chartElement) => {
         event.native.target.style.cursor = chartElement.length ? 'pointer' : 'default';
-      }
-    }
+      },
+    },
   };
 
   return (

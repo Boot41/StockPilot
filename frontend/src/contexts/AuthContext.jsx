@@ -1,8 +1,8 @@
 // In /home/karan/Desktop/Ai_Inventory_project/frontend/src/contexts/AuthContext.jsx
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
+import { axiosInstance, API_ENDPOINTS } from '../config/api'; // Import axiosInstance and API_ENDPOINTS
 
 const AuthContext = createContext(undefined);
 
@@ -20,8 +20,6 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(!!token);
-
-  const API_URL = 'http://127.0.0.1:8000/auth'; // Django backend URL
 
   useEffect(() => {
     if (token) {
@@ -45,7 +43,8 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.post(`${API_URL}/login/`, { username, password });
+      // Use the correct login endpoint from API_ENDPOINTS.AUTH.LOGIN with axiosInstance
+      const response = await axiosInstance.post(API_ENDPOINTS.AUTH.LOGIN, { username, password });
 
       const { access, refresh } = response.data;
       localStorage.setItem('access_token', access);
@@ -67,7 +66,8 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.post(`${API_URL}/register/`, { 
+      // Use the register endpoint from API_ENDPOINTS.AUTH.REGISTER with axiosInstance
+      const response = await axiosInstance.post(API_ENDPOINTS.AUTH.REGISTER, { 
         username, 
         email, 
         password, 
@@ -94,7 +94,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.post(`${API_URL}/forgot-password/`, { email });
+      const response = await axiosInstance.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, { email });
       setLoading(false);
       return { success: true, message: "Password reset link has been sent to your email!" };
     } catch (err) {
@@ -129,3 +129,5 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
+export default AuthContext;
