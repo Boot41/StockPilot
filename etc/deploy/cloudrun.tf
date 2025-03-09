@@ -64,7 +64,7 @@ resource "google_cloud_run_service" "default" {
         resources {
           limits = {
             cpu    = "1"
-            memory = "128Mi"
+            memory = "512Mi"
           }
         }
 
@@ -75,7 +75,7 @@ resource "google_cloud_run_service" "default" {
       }
 
       container_concurrency = 80
-      timeout_seconds       = 300
+      timeout_seconds       = 600
     }
 
     metadata {

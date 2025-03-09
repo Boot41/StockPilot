@@ -2,7 +2,11 @@ import os
 import json
 import datetime
 import requests
+import logging
 from dotenv import load_dotenv
+
+# Configure logger
+logger = logging.getLogger(__name__)
 from django.db.models import Sum, Count
 from .models import Product, Order, InventoryTransaction
 
@@ -10,8 +14,11 @@ from .models import Product, Order, InventoryTransaction
 load_dotenv()
 
 # Gemini API setup (loaded from .env)
-GEMINI_API_URL = "http://127.0.0.1:8000/chatbot/"  # Using local AI chat service
-API_KEY = os.getenv("GEMINI_API_KEY")  # Get API Key from .env
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+API_KEY = os.getenv("GEMINI_API_KEY")
+
+if not API_KEY:
+    logger.error("GEMINI_API_KEY not found in environment variables")
 
 
 # ✅ Function to handle inventory-related queries
@@ -71,6 +78,94 @@ def process_inventory_query(user_query):
 
 # ✅ Function to send queries to Gemini AI
 def fetch_ai_insights(query):
+    """Sends user query to Gemini AI for advanced analysis, trends, and optimization suggestions."""
+    try:
+        # Prepare headers
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {API_KEY}"
+        }
+
+        # Send request to Gemini API
+        response = requests.post(
+            GEMINI_API_URL,
+            headers=headers,
+            json={"query": query}
+        )
+
+        if response.status_code == 200:
+            return {"success": True, "response": response.json()}
+        else:
+            return {
+                "success": False,
+                "error": f"API Error: {response.status_code}",
+                "message": "Failed to get AI insights"
+            }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "Failed to connect to AI service"
+        }
+
+# ✅ Function to clean AI response
+def clean_ai_response(ai_response):
+    """Removes Markdown code block formatting from AI response."""
+    if not ai_response:
+        return ""
+    
+    # Remove code block markers
+    cleaned = ai_response.replace('```', '')
+    
+    # Remove language specifiers (e.g., python, javascript)
+    lines = cleaned.split('\n')
+    cleaned_lines = [line for line in lines if not line.strip() in ['python', 'javascript', 'json']]
+    
+    return '\n'.join(cleaned_lines).strip()
+
+# ✅ Function to generate text using Gemini API
+def generate_text(prompt, model_name="gemini-1.5-flash"):
+    """Generate text using Gemini API."""
+    try:
+        # Prepare headers
+        headers = {
+            "Content-Type": "application/json",
+            "x-goog-api-key": API_KEY
+        }
+
+        # Prepare payload
+        payload = {
+            "contents": [{
+                "parts": [{
+                    "text": prompt
+                }]
+            }]
+        }
+
+        # Send request to Gemini API
+        response = requests.post(
+            GEMINI_API_URL,
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('candidates') and len(data['candidates']) > 0:
+                if data['candidates'][0].get('content'):
+                    content = data['candidates'][0]['content']
+                    if content.get('parts') and len(content['parts']) > 0:
+                        return content['parts'][0].get('text', '')
+            return data.get('text', str(data))
+        else:
+            logger.error(f"Gemini API error: {response.text}")
+            return "I apologize, but I'm having trouble accessing my knowledge base right now. Please try again later."
+
+    except Exception as e:
+        logger.error(f"Error in generate_text: {str(e)}")
+        return f"I apologize, but I'm experiencing technical difficulties: {str(e)}"
     """
     Sends user query to Gemini AI for advanced analysis, trends, and optimization suggestions.
     """

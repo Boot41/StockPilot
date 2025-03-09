@@ -41,10 +41,11 @@ class AuthViewSet(viewsets.ViewSet):
             'detail': 'CSRF cookie set'
         })
         response['X-CSRFToken'] = token
-        response['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
+        response['Access-Control-Allow-Origin'] = 'http://localhost:5173'  # Your React dev server
         response['Access-Control-Allow-Credentials'] = 'true'
         return response
 
+    @method_decorator(csrf_protect)
     @action(detail=False, methods=['post'])
     def register(self, request):
         """ User Registration """
@@ -64,16 +65,42 @@ class AuthViewSet(viewsets.ViewSet):
             return response
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @method_decorator(csrf_protect)
     @action(detail=False, methods=['post'])
     def login(self, request):
         """ User Login """
+        print("Login request received")
+        print("Request headers:", request.headers)
+        print("Request data:", request.data)
+        print("Request COOKIES:", request.COOKIES)
+        
         serializer = LoginSerializer(data=request.data)
+        
         if serializer.is_valid():
-            response = Response(serializer.validated_data, status=status.HTTP_200_OK)
-            response['Access-Control-Allow-Credentials'] = 'true'
-            return response
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            print("Serializer is valid")
+            user = serializer.validated_data.get('user')
+            if user:
+                print(f"User authenticated successfully: {user.username}")
+                refresh = RefreshToken.for_user(user)
+                response_data = {
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                    'user': {
+                        'id': user.id,
+                        'username': user.username,
+                        'email': user.email
+                    }
+                }
+                print("Response data:", response_data)
+                return Response(response_data)
+            print("User not found in validated data")
+        else:
+            print("Serializer errors:", serializer.errors)
+        
+        return Response(
+            {"detail": "Invalid credentials"},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
 
     @action(detail=False, methods=['post'], url_path='forgot-password')
     def forgot_password(self, request):

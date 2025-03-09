@@ -19,7 +19,7 @@ const Sidebar = () => {
   const navItems = [
     { path: '/import-forecast', name: 'Import & Forecast', icon: Upload }, // New item at the top
     { path: '/dashboard', name: 'Dashboard', icon: LayoutDashboard },
-    { path: '/inventory', name: 'Inventory', icon: Package },
+    { path: '/inventory', name: 'Inventory', icon: Package, keepVisible: true },
     { path: '/forecast', name: 'Forecast', icon: TrendingUp },
     { path: '/analytics', name: 'Analytics', icon: BarChart2 },
     { path: '/user-inventory', name: 'User Inventory', icon: ClipboardList },
@@ -38,8 +38,8 @@ const Sidebar = () => {
       {/* Navigation Links */}
       <nav className="flex-1 p-4">
         <ul className="space-y-2">
-          {navItems.map(({ path, name, icon: Icon }) => (
-            <li key={path}>
+          {navItems.map(({ path, name, icon: Icon, keepVisible }) => (
+            <li key={path} className={keepVisible ? 'visible' : ''}>
               <NavLink 
                 to={path}
                 className={({ isActive }) => 

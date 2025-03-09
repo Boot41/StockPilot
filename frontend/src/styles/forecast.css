@@ -1,0 +1,66 @@
+.forecast-chart-container {
+  background: white;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
+}
+
+.forecast-chart-container h3 {
+  color: #1a237e;
+  font-weight: 600;
+}
+
+/* Tooltip customization */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  padding: 12px !important;
+}
+
+/* Chart axis labels */
+.recharts-cartesian-axis-label {
+  font-size: 14px;
+  fill: #424242;
+}
+
+/* Legend styling */
+.recharts-default-legend {
+  padding: 0 20px !important;
+}
+
+.recharts-legend-item {
+  margin-right: 20px !important;
+}
+
+/* Grid lines */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: #e0e0e0;
+}
+
+/* Bar hover effect */
+.recharts-bar-rectangle:hover {
+  opacity: 0.8;
+}
+
+/* Product list animations */
+.product-list-item {
+  transition: all 0.2s ease-in-out;
+}
+
+.product-list-item:hover {
+  transform: translateX(4px);
+  background-color: #f5f5f5;
+}
+
+/* Status badges */
+.status-badge {
+  transition: all 0.2s ease-in-out;
+}
+
+.status-badge:hover {
+  transform: scale(1.05);
+}

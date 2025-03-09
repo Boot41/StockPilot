@@ -32,30 +32,31 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
-    password = serializers.CharField(write_only=True)
+    username = serializers.CharField(required=True)
+    password = serializers.CharField(required=True, write_only=True)
 
     def validate(self, data):
         """Authenticate user and return JWT token"""
-        try:
-            user = User.objects.get(username=data['username'])
-            if user.check_password(data['password']):
-                if not user.is_active:
-                    raise serializers.ValidationError("This account is disabled.")
-                return {
-                    "user": {"username": user.username, "email": user.email},
-                    "refresh": str(RefreshToken.for_user(user)),
-                    "access": str(RefreshToken.for_user(user).access_token),
-                }
-            raise serializers.ValidationError("Invalid username or password.")
-        except User.DoesNotExist:
-            raise serializers.ValidationError("Invalid username or password.")
-        refresh = RefreshToken.for_user(user)
-        return {
-            "user": {"username": user.username, "email": user.email},
-            "refresh": str(refresh),
-            "access": str(refresh.access_token),
-        }
+        print("LoginSerializer validate called")
+        print("Input data:", data)
+        
+        username = data.get('username')
+        password = data.get('password')
+        
+        if not username or not password:
+            raise serializers.ValidationError("Both username and password are required.")
+            
+        print(f"Attempting to authenticate user: {username}")
+        user = authenticate(username=username, password=password)
+        print("Authentication result:", user)
+        
+        if user and user.is_active:
+            print(f"User {username} authenticated successfully")
+            data['user'] = user
+            return data
+            
+        print(f"Authentication failed for user: {username}")
+        raise serializers.ValidationError("Invalid username or password.")
 
 
 class ForgotPasswordSerializer(serializers.Serializer):

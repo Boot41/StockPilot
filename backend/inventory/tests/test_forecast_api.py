@@ -40,12 +40,15 @@ class ForecastAPITests(TestCase):
         self.forecast_sales_url = reverse('forecast-demand')
         self.forecast_demand_url = reverse('gemini-insights')
 
-    def test_forecast_sales_with_data(self):
-        """Test sales forecast when there is sales data."""
+    def test_forecast_sales_no_data(self):
+        """Test sales forecast when there is no sales data."""
+        # Delete all orders
+        Order.objects.all().delete()
+        
         response = self.client.get(self.forecast_sales_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('forecast', response.data)
-        self.assertEqual(response.data['forecast'], 5.0)  # Average of 5 units per order
+        self.assertIn('message', response.data)
+        self.assertEqual(response.data['message'], 'No sales data found.')
 
     def test_forecast_demand(self):
         """Test AI-powered demand forecast."""

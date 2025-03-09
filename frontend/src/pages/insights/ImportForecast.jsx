@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import axios from "axios";
+import '../../styles/forecast.css';
+import { axiosInstance as axios } from '../../config/api';
 import {
   BarChart,
   Bar,
@@ -9,54 +10,52 @@ import {
   ResponsiveContainer,
   Line,
   CartesianGrid,
-  Legend,
   Label,
 } from "recharts";
 import MainLayout from "../../components/layout/MainLayout";
 import ErrorBoundary from "../../components/ErrorBoundary";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaFileImport, FaSpinner } from "react-icons/fa";
-import { FiTrendingUp, FiAlertCircle, FiUploadCloud } from "react-icons/fi";
+import { FiTrendingUp, FiAlertCircle, FiUploadCloud, FiPlus } from "react-icons/fi";
 
 const ForecastChart = ({ data }) => {
   const isValid = Array.isArray(data) && data.length > 0 && 
     data.every(d => d?.product && d?.predicted_sales && d?.confidence);
 
   return (
-    <motion.div className="bg-gray-800/50 p-6 rounded-2xl border border-gray-600/30 backdrop-blur-lg">
+    <motion.div className="bg-gray-100/50 p-6 rounded-2xl border border-gray-400/30 backdrop-blur-lg">
       <h3 className="text-xl font-bold mb-4 text-amber-400">
         📈 Sales Forecast & Confidence
       </h3>
-      
       {isValid ? (
-        <ResponsiveContainer width="100%" height={400}>
-          <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#4b5563" />
+        <ResponsiveContainer width="100%" height={500}>
+          <BarChart data={data} margin={{ top: 60, right: 30, left: 20, bottom: 60 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" />
             <XAxis
               dataKey="product"
               angle={-45}
               textAnchor="end"
-              tick={{ fill: '#9ca3af' }}
+              tick={{ fill: '#6b7280' }}
               label={{
-                value: "Products",
+                value: "",
                 position: "bottom",
                 offset: 40,
-                fill: '#9ca3af'
+                fill: '#6b7280'
               }}
             />
-            <YAxis yAxisId="left" tick={{ fill: '#9ca3af' }}>
+            <YAxis yAxisId="left" tick={{ fill: '#6b7280' }}>
               <Label
-                value="Predicted Sales ($)"
+                value=""
                 angle={-90}
                 position="left"
                 offset={-10}
-                fill='#9ca3af'
+                fill='#6b7280'
               />
             </YAxis>
             <YAxis
               yAxisId="right"
               orientation="right"
-              tick={{ fill: '#9ca3af' }}
+              tick={{ fill: '#6b7280' }}
               domain={[0, 100]}
             >
               <Label
@@ -64,26 +63,26 @@ const ForecastChart = ({ data }) => {
                 angle={90}
                 position="right"
                 offset={-10}
-                fill='#9ca3af'
+                fill='#6b7280'
               />
             </YAxis>
             <Tooltip
               contentStyle={{
-                background: "#1f2937",
-                border: "1px solid #374151",
+                background: "#f9fafb",
+                border: "1px solid #d1d5db",
                 borderRadius: "8px",
-                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.5)"
+                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
               }}
               formatter={(value, name) => {
-                if (name === 'Predicted Sales') return [`$${Number(value).toLocaleString()}`, name];
+                if (name === '') return [`$${Number(value).toLocaleString()}`, ''];
                 if (name === 'Confidence Score') return [`${value}%`, name];
-                return [value, name];
+                return [value, ''];
               }}
             />
             <Bar
               yAxisId="left"
               dataKey="predicted_sales"
-              name="Predicted Sales"
+              name=""
               fill="#f59e0b"
               radius={[4, 4, 0, 0]}
             />
@@ -91,21 +90,18 @@ const ForecastChart = ({ data }) => {
               yAxisId="right"
               type="monotone"
               dataKey="confidence"
-              name="Confidence Score"
+              name=""
               stroke="#10b981"
               strokeWidth={2}
               dot={{ fill: "#059669", strokeWidth: 2 }}
             />
-            <Legend 
-              wrapperStyle={{ paddingTop: 20 }}
-              formatter={(value) => <span className="text-gray-300">{value}</span>}
-            />
+
           </BarChart>
         </ResponsiveContainer>
       ) : (
         <div className="text-center py-8">
-          <p className="text-gray-400">⚠️ No forecast data available</p>
-          <p className="text-sm text-gray-500 mt-2">
+          <p className="text-gray-600">⚠️ No forecast data available</p>
+          <p className="text-sm text-gray-700 mt-2">
             Upload a valid dataset to generate predictions
           </p>
         </div>
@@ -122,9 +118,9 @@ const InventoryHealth = ({ health }) => {
   };
 
   return (
-    <motion.div className="bg-gray-800/50 p-6 rounded-2xl border border-amber-500/30 backdrop-blur-lg">
+    <motion.div className="bg-gray-100/50 p-6 rounded-2xl border border-amber-500/30 backdrop-blur-lg">
       <div className="flex items-center gap-3 mb-4">
-        <FiAlertCircle className="text-amber-500 text-2xl" />
+        <FiPlus className="text-blue-500 text-2xl" />
         <h3 className="text-xl font-bold text-amber-500">Inventory Health Status</h3>
       </div>
       
@@ -132,7 +128,7 @@ const InventoryHealth = ({ health }) => {
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <div className={`w-3 h-3 rounded-full ${status[health.status].color}`} />
-            <p className="text-lg font-semibold text-gray-300">
+            <p className="text-lg font-semibold text-gray-600">
               {status[health.status].text}
             </p>
           </div>
@@ -140,13 +136,13 @@ const InventoryHealth = ({ health }) => {
             {health.insights?.map((insight, i) => (
               <div key={i} className="flex items-start gap-2">
                 <span className="text-amber-500">•</span>
-                <p className="text-gray-400">{insight}</p>
+                <p className="text-gray-600">{insight}</p>
               </div>
             ))}
           </div>
         </div>
       ) : (
-        <p className="text-gray-400">No health analysis available</p>
+        <p className="text-gray-600">No health analysis available</p>
       )}
     </motion.div>
   );
@@ -156,7 +152,7 @@ const ProductList = ({ title, items, type }) => {
   const isValid = Array.isArray(items) && items.length > 0;
 
   return (
-    <motion.div className="bg-gray-800/50 p-6 rounded-2xl border border-gray-600/30 backdrop-blur-lg">
+    <motion.div className="bg-gray-100/50 p-6 rounded-2xl border border-gray-400/30 backdrop-blur-lg">
       <div className="flex items-center gap-3 mb-4">
         {type === 'fast' ? (
           <FiTrendingUp className="text-green-500 text-2xl" />
@@ -169,9 +165,9 @@ const ProductList = ({ title, items, type }) => {
       {isValid ? (
         <div className="space-y-3">
           {items.map((item, i) => (
-            <div key={`${type}-${item.product || i}`} className="p-3 bg-gray-700/20 rounded-lg hover:bg-gray-700/40 transition-colors">
+            <div key={`${type}-${item.product || i}`} className="p-3 bg-gray-200/20 rounded-lg hover:bg-gray-200/40 transition-colors">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-gray-300 font-medium">
+                <span className="text-gray-600 font-medium">
                   {item.product || `Product ${i + 1}`}
                 </span>
                 <span className={`text-sm ${
@@ -180,7 +176,7 @@ const ProductList = ({ title, items, type }) => {
                   {type === 'fast' ? '↑ High Demand' : '↓ Low Movement'}
                 </span>
               </div>
-              <div className="flex justify-between text-sm text-gray-400">
+              <div className="flex justify-between text-sm text-gray-600">
                 <span>Current Stock: {item.stock || 'N/A'}</span>
                 <span>Projected Sales: {item.projected_sales || 'N/A'}</span>
               </div>
@@ -188,7 +184,7 @@ const ProductList = ({ title, items, type }) => {
           ))}
         </div>
       ) : (
-        <p className="text-gray-400">No products data available</p>
+        <p className="text-gray-600">No products data available</p>
       )}
     </motion.div>
   );
@@ -200,7 +196,7 @@ const ImportForecast = () => {
   const [loading, setLoading] = useState(false);
   const [forecastData, setForecastData] = useState(null);
 
-  const API_URL = 'http://127.0.0.1:8000/api/inventory-forecast/';
+  const API_URL = '/api/inventory-forecast/';
 
   const handleUpload = async () => {
     if (!file) return setError('Please select a file');
@@ -212,19 +208,15 @@ const ImportForecast = () => {
     formData.append('file', file);
 
     try {
-      // First, upload to inventory-forecast endpoint
+      // Upload to inventory-forecast endpoint
       const forecastResponse = await axios.post(API_URL, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { 
+          'Content-Type': 'multipart/form-data'
+        },
         timeout: 30000
       });
 
       const forecastData = forecastResponse.data;
-
-      // Initialize chatbot context with the uploaded data
-      await axios.post('http://127.0.0.1:8000/api/chatbot/', {
-        contents: [{ parts: [{ text: 'Initialize context with uploaded inventory data' }] }],
-        uploaded_data: forecastData
-      });
 
       if (!forecastData?.forecast || !Array.isArray(forecastData.forecast)) {
         throw new Error('Invalid data format from server');
@@ -252,7 +244,7 @@ const ImportForecast = () => {
   return (
     <ErrorBoundary>
       <MainLayout>
-        <div className="min-h-screen bg-gray-900 text-gray-100 p-8">
+        <div className="min-h-screen bg-gray-100 text-gray-900 p-8">
           {/* Upload Section */}
           <div className="max-w-4xl mx-auto mb-12">
             <div className="flex items-center gap-4 mb-8">
@@ -263,14 +255,14 @@ const ImportForecast = () => {
                 <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-600">
                   Inventory Forecast
                 </h1>
-                <p className="text-gray-400 mt-2">
+                <p className="text-gray-600 mt-2">
                   AI-powered inventory predictions and analytics
                 </p>
               </div>
             </div>
 
             {/* File Upload Card */}
-            <div className="bg-gray-800/50 rounded-xl border border-gray-700 p-6 mb-8">
+            <div className="bg-gray-200 rounded-xl border border-gray-400 p-6 mb-8">
               <div className="text-center">
                 <FiUploadCloud className="text-4xl text-amber-500 mx-auto mb-4" />
                 <input

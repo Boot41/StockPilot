@@ -17,21 +17,25 @@ DEBUG = os.getenv("DEBUG", "True").lower() == "true"  # Ensure boolean conversio
 ALLOWED_HOSTS = ['*']  # For development only
 
 # CORS Configuration
-CORS_ORIGIN_ALLOW_ALL = False  # More restrictive
+CORS_ORIGIN_ALLOW_ALL = False
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 
-# Allowed origins (update to include your React dev server on port 5173)
+# CORS Settings
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:5173',  # Added for React dev server
-    'http://127.0.0.1:5173',  # Added for React dev server
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
+    'http://localhost:8000',  # Django server
+    'http://127.0.0.1:8000',  # Django server
 ]
 
-# Additional CORS settings
-CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -43,25 +47,16 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
+
+# Security Settings
+SECURE_CROSS_ORIGIN_OPENER_POLICY = None  # For development only
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+SECURE_BROWSER_XSS_FILTER = True
 
 # CSRF Configuration
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-    "http://0.0.0.0:8000",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://0.0.0.0:3000",
-    "http://localhost:5173",  # Added for React dev server
-    "http://127.0.0.1:5173",  # Added for React dev server
+    'http://localhost:8000',  # Django server
+    'http://127.0.0.1:8000',  # Django server
 ]
 
 # CSRF Cookie settings
@@ -70,7 +65,6 @@ CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SECURE = False  # Set to True in production
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_USE_SESSIONS = False
-CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 CSRF_COOKIE_DOMAIN = None
 CSRF_COOKIE_PATH = '/'
 CSRF_COOKIE_AGE = 31449600  # 1 year in seconds
@@ -80,9 +74,14 @@ SESSION_COOKIE_SECURE = False  # Set to True in production
 SESSION_COOKIE_SAMESITE = 'Lax'
 
 # Security settings for development
+SECURE_PROXY_SSL_HEADER = None
 SESSION_COOKIE_SECURE = False
-SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SECURE = False
+CSRF_COOKIE_HTTPONLY = False
+CSRF_USE_SESSIONS = False
+CSRF_COOKIE_SAMESITE = None
 SESSION_COOKIE_SAMESITE = None
+SECURE_SSL_REDIRECT = False
 
 # Gemini API Key
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -123,7 +122,7 @@ ROOT_URLCONF = 'ai_inventory_backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -164,6 +163,7 @@ USE_TZ = True
 # Static files
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Django REST framework settings

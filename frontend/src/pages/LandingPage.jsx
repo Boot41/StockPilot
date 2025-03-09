@@ -1,126 +1,246 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { FaChartLine, FaBolt, FaDatabase, FaRobot, FaCloud, FaShieldAlt } from "react-icons/fa";
+import { 
+  FaChartLine, FaRobot, FaWarehouse, FaFileExcel, 
+  FaBoxes, FaCloudUploadAlt, FaMobileAlt, FaCommentDots,
+  FaTwitter, FaLinkedin, FaGithub, FaRegEnvelope
+} from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import Button from "../components/Ui/Button";
+import { CommonComponents } from '../components/CommonComponents';
+import useAnalytics from "../hooks/useAnalytics";
+import api from "../services/api";
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { scrollYProgress } = useScroll();
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const { trackEvent } = useAnalytics();
+
+  const scaleX = useTransform(scrollYProgress, [0, 1], [0.2, 1]);
+
+  const handleTrialStart = async () => {
+    try {
+      setLoading(true);
+      await api.startTrial();
+      trackEvent('free_trial_started');
+      navigate("/signup");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-gray-900 to-black text-white overflow-hidden relative">
-      {/* Animated Background Elements */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.1 }}
-        transition={{ duration: 2 }}
-        className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMiIgaGVpZ2h0PSIyIiBmaWxsPSIjZmZmZmZmIi8+PC9zdmc+')]"
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50 text-gray-900 overflow-hidden relative">
+      <CommonComponents 
+        loading={loading} 
+        error={error} 
+        onDismissError={() => setError(null)} 
+        isChatOpen={isChatOpen} 
+        onCloseChat={() => setIsChatOpen(false)} 
       />
       
-      <div className="container mx-auto px-6 py-24 relative z-10">
-        {/* Grid Layout - Hero + Features */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-          {/* Left - Hero Text */}
+      {/* Progress Bar */}
+      <motion.div 
+        className="fixed top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-indigo-600 to-cyan-500 origin-left z-50" 
+        style={{ scaleX }}
+      />
+
+      {/* Hero Section */}
+      <section className="container mx-auto px-6 py-24 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1 }}
-            className="relative"
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8 }}
           >
-            <div className="absolute -top-20 -left-20 w-72 h-72 bg-gradient-to-r from-yellow-400/20 to-transparent rounded-full blur-2xl" />
+            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+              Revolutionize Inventory Management with{' '}
+              <span className="bg-gradient-to-r from-indigo-600 to-cyan-500 bg-clip-text text-transparent">
+                StockPilot
+              </span>
+            </h1>
             
-            <motion.h1
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3, duration: 1 }}
-              className="text-7xl md:text-8xl font-bold bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-500 bg-clip-text text-transparent mb-6"
-            >
-              StockPilot
-            </motion.h1>
-            
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6, duration: 1 }}
-              className="text-2xl font-light text-gray-300 mb-8"
-            >
-              Enterprise-Grade AI Inventory Optimization
-            </motion.p>
-            
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.9, duration: 1 }}
-              className="flex gap-6 items-center"
-            >
-              <Button
-                onClick={() => navigate("/signup")}
-                className="text-lg px-8 py-4 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 transition-all"
+            <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+              Harness AI-powered insights to optimize stock levels, predict demand patterns,
+              and streamline inventory operations in real-time.
+            </p>
+
+            <div className="flex gap-6 items-center">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleTrialStart}
+                className="text-lg px-8 py-4 bg-gradient-to-r from-indigo-600 to-cyan-500 hover:from-indigo-700 hover:to-cyan-600 text-white rounded-lg shadow-xl transition-all"
               >
                 Start Free Trial
-              </Button>
-              <button className="text-gray-300 hover:text-white transition-colors">
-                Watch Demo →
-              </button>
-            </motion.div>
-
-            {/* Trust Badges */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1.2 }}
-              className="mt-16 flex items-center gap-8 text-gray-400"
-            >
-              <div className="h-px bg-gray-700 flex-1" />
-              <span className="text-sm">Fueling Business Growth</span>
-              <div className="h-px bg-gray-700 flex-1" />
-            </motion.div>
+              </motion.button>
+            </div>
           </motion.div>
 
-          {/* Right - Animated Feature Grid */}
-          <div className="grid grid-cols-2 gap-6 relative">
-            <div className="absolute -right-20 -top-20 w-96 h-96 bg-gradient-to-l from-blue-600/20 to-transparent rounded-full blur-2xl" />
-            
+          <motion.div
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="relative"
+          >
+            <div className="relative rounded-2xl shadow-2xl overflow-hidden border-2 border-white bg-white">
+              <div className="h-96 bg-gradient-to-br from-indigo-50 to-cyan-50 relative overflow-hidden">
+                <motion.div
+                  animate={{ 
+                    y: [0, -15, 0],
+                    opacity: [0.9, 1, 0.9]
+                  }}
+                  transition={{ 
+                    duration: 4, 
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                >
+                  <div className="bg-white p-8 rounded-2xl shadow-2xl border border-gray-100 min-w-[300px]">
+                    <FaRobot className="text-6xl text-cyan-500 mb-4 mx-auto animate-pulse" />
+                    <p className="text-xl font-bold text-gray-900 text-center mb-2">
+                      AI Recommendation
+                    </p>
+                    <motion.p 
+                      className="text-lg text-gray-600 text-center"
+                      animate={{ opacity: [0.8, 1, 0.8] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
+                      Optimal Order Detected
+                    </motion.p>
+                    <div className="mt-4 h-2 bg-cyan-100 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-cyan-500"
+                        initial={{ width: 0 }}
+                        animate={{ width: "100%" }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Feature Grid Section */}
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-6">
+          <motion.h2 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-4xl font-bold text-center mb-16"
+          >
+            Intelligent Inventory Features
+          </motion.h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.15 + 0.5 }}
-                className="group relative bg-gray-800/50 backdrop-blur-lg rounded-2xl p-8 border border-gray-700 hover:border-yellow-400/30 transition-all hover:shadow-2xl hover:-translate-y-2"
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ delay: index * 0.1 }}
+                className="group bg-white rounded-xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100"
               >
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-yellow-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <feature.icon className="text-5xl mb-6 text-yellow-400" />
-                <h3 className="text-2xl font-semibold mb-3">{feature.title}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">
-                  {feature.description}
-                </p>
+                <div className={`mb-6 text-5xl ${feature.color}`}>
+                  <feature.icon />
+                </div>
+                <h3 className="text-2xl font-bold mb-4">{feature.title}</h3>
+                <p className="text-gray-600 leading-relaxed">{feature.description}</p>
               </motion.div>
             ))}
           </div>
         </div>
+      </section>
 
-        {/* Floating AI Elements */}
-        <motion.div
-          animate={{ y: [0, -20, 0] }}
-          transition={{ duration: 6, repeat: Infinity }}
-          className="absolute right-0 top-1/3 -translate-y-1/2 opacity-10"
-        >
-          <div className="text-9xl opacity-50 blur-lg">
-            <FaRobot />
+      {/* Interactive Demo Section */}
+      <section className="py-20 bg-gradient-to-br from-indigo-600 to-cyan-500">
+        <div className="container mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div className="text-white">
+            <motion.h2 
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              className="text-4xl font-bold mb-8"
+            >
+              Smart Spreadsheet Integration
+            </motion.h2>
+            
+            <div className="space-y-8">
+              <div className="flex items-center gap-6">
+                <div className="p-4 bg-white/10 rounded-xl">
+                  <FaFileExcel className="text-4xl" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">Real-time Data Sync</h3>
+                  <p className="text-indigo-100">Instant synchronization with existing spreadsheets</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-6">
+                <div className="p-4 bg-white/10 rounded-xl">
+                  <FaRobot className="text-4xl" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-2">Smart Data Analysis</h3>
+                  <p className="text-indigo-100">Automatic pattern recognition and insights</p>
+                </div>
+              </div>
+            </div>
           </div>
-        </motion.div>
-      </div>
 
-      {/* Animated Circuit Border */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.3 }}
-        transition={{ duration: 2 }}
-        className="absolute inset-0 pointer-events-none"
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            className="relative rounded-2xl overflow-hidden shadow-2xl bg-white/10 backdrop-blur-lg"
+          >
+            <div className="p-6">
+              <div className="bg-white/5 rounded-lg overflow-hidden">
+                <div className="p-4 border-b border-white/10 flex gap-4">
+                  <div className="h-3 w-3 rounded-full bg-red-500"></div>
+                  <div className="h-3 w-3 rounded-full bg-yellow-500"></div>
+                  <div className="h-3 w-3 rounded-full bg-green-500"></div>
+                </div>
+                <div className="p-4 grid gap-4">
+                  {[...Array(6)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      className="h-3 bg-white/10 rounded-full animate-pulse"
+                      style={{ width: `${80 - i * 10}%` }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Floating Chat Trigger */}
+      <motion.button
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => setIsChatOpen(true)}
+        className="fixed bottom-8 right-8 bg-gradient-to-br from-indigo-600 to-cyan-500 text-white p-5 rounded-full shadow-2xl flex items-center gap-3 group"
       >
-        <div className="absolute inset-0 border-[16px] border-dashed border-yellow-400/10 rounded-xl m-4" />
-      </motion.div>
+        <div className="relative">
+          <FaCommentDots className="text-2xl" />
+          <div className="absolute -top-1 -right-1 h-3 w-3 bg-green-400 rounded-full animate-ping" />
+        </div>
+        <span className="font-semibold group-hover:scale-105 transition-transform">
+          AI Assistant
+        </span>
+      </motion.button>
     </div>
   );
 }
@@ -129,31 +249,37 @@ const features = [
   {
     title: "Predictive Analytics",
     icon: FaChartLine,
-    description: "Deep learning algorithms forecast demand with 98% accuracy"
+    color: "text-cyan-500",
+    description: "Machine learning models forecasting demand with 98% accuracy"
   },
   {
     title: "Auto-Replenishment",
-    icon: FaBolt,
-    description: "Smart inventory automation with real-time adjustments"
+    icon: FaCloudUploadAlt,
+    color: "text-indigo-500",
+    description: "Intelligent inventory automation with supplier integration"
   },
   {
-    title: "Supply Chain AI",
-    icon: FaDatabase,
-    description: "End-to-end optimization across your entire network"
+    title: "Multi-Warehouse Sync",
+    icon: FaWarehouse,
+    color: "text-purple-500",
+    description: "Real-time inventory tracking across locations"
   },
   {
-    title: "Risk Analysis",
-    icon: FaShieldAlt,
-    description: "Real-time threat detection and mitigation systems"
+    title: "Mobile Management",
+    icon: FaMobileAlt,
+    color: "text-green-500",
+    description: "Real-time mobile inventory tracking and management"
   },
   {
-    title: "Cloud Native",
-    icon: FaCloud,
-    description: "Global deployment with multi-cloud infrastructure"
+    title: "Smart Auditing",
+    icon: FaBoxes,
+    color: "text-orange-500",
+    description: "Automated inventory checks with instant alerts"
   },
   {
-    title: "Smart Audit",
-    icon: FaRobot,
-    description: "Automated cycle counting with computer vision"
+    title: "Live AI Support",
+    icon: FaCommentDots,
+    color: "text-pink-500",
+    description: "Instant inventory insights through natural conversation"
   }
 ];

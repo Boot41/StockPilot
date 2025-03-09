@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { API_BASE_URL } from "../../config/api"; // Import API_BASE_URL from your config
+import { API_BASE_URL } from "../../config/api";
 import {
   BarChart,
   Bar,
@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
 import ErrorBoundary from "../../components/ErrorBoundary";
+import MainLayout from "../../components/layout/MainLayout";
 
 // Helper function to extract array data from API response
 const extractData = (response) => {
@@ -27,7 +28,7 @@ const Inventory = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [bgGradient, setBgGradient] = useState(
-    "bg-gradient-to-b from-blue-900 to-gray-900"
+    "bg-gradient-to-b from-blue-100 to-gray-100"
   );
   const [categorySales, setCategorySales] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
@@ -39,10 +40,11 @@ const Inventory = () => {
         setLoading(true);
         setError(null);
 
+        const baseUrl = process.env.NODE_ENV === 'production' ? window.location.origin : API_BASE_URL;
         const endpoints = [
-          `${API_BASE_URL}/api/inventory/`,
-          `${API_BASE_URL}/api/product/`,
-          `${API_BASE_URL}/api/order/`,
+          `${baseUrl}/api/inventory/`,
+          `${baseUrl}/api/product/`,
+          `${baseUrl}/api/order/`,
         ];
 
         const responses = await Promise.all(
@@ -84,13 +86,13 @@ const Inventory = () => {
   useEffect(() => {
     switch (filter) {
       case "sale":
-        setBgGradient("bg-gradient-to-b from-red-800 to-gray-900");
+        setBgGradient("bg-gradient-to-b from-red-100 to-gray-100");
         break;
       case "restock":
-        setBgGradient("bg-gradient-to-b from-green-800 to-gray-900");
+        setBgGradient("bg-gradient-to-b from-green-100 to-gray-100");
         break;
       default:
-        setBgGradient("bg-gradient-to-b from-blue-900 to-gray-900");
+        setBgGradient("bg-gradient-to-b from-blue-100 to-gray-100");
         break;
     }
   }, [filter]);
@@ -187,7 +189,7 @@ const Inventory = () => {
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-gray-800/90 backdrop-blur-sm p-4 rounded-xl shadow-xl border border-gray-700/50"
+          className="bg-gray-100 backdrop-blur-sm p-4 rounded-xl shadow-xl border border-gray-300"
         >
           <p className="text-yellow-400 font-semibold text-lg mb-2">{label}</p>
           {payload.map((entry) => (
@@ -208,7 +210,8 @@ const Inventory = () => {
 
   return (
     <ErrorBoundary>
-      <div className={`min-h-screen p-8 text-white ${bgGradient}`}>
+      <MainLayout>
+        <div className={`flex-1 p-8 text-black ${bgGradient}`}>
         <motion.div 
           className="max-w-7xl mx-auto"
           initial={{ opacity: 0 }}
@@ -224,7 +227,7 @@ const Inventory = () => {
             📦 StockPilot Inventory Dashboard
           </motion.h1>
           <motion.p 
-            className="text-lg text-center text-gray-400 mb-10"
+            className="text-lg text-center text-gray-600 mb-10"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
@@ -233,7 +236,7 @@ const Inventory = () => {
           </motion.p>
 
           <motion.div 
-            className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-gray-800/50 p-4 rounded-xl backdrop-blur-sm border border-gray-700/50 shadow-lg"
+            className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-gray-100 p-4 rounded-xl border border-gray-300 shadow-lg"
             whileHover={{ boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.2)" }}
             transition={{ duration: 0.2 }}
           >
@@ -243,7 +246,7 @@ const Inventory = () => {
                 className={`px-6 py-2.5 rounded-lg font-medium ${
                   filter === "all" 
                     ? "bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 shadow-lg shadow-yellow-500/30" 
-                    : "bg-gray-800 hover:bg-gray-700 text-gray-300"
+                    : "bg-gray-200 hover:bg-gray-300 text-gray-800"
                 } transition-all duration-300 transform hover:scale-105`}
               >
                 All
@@ -253,7 +256,7 @@ const Inventory = () => {
                 className={`px-6 py-2.5 rounded-lg font-medium ${
                   filter === "sale" 
                     ? "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg shadow-red-500/30" 
-                    : "bg-gray-800 hover:bg-gray-700 text-gray-300"
+                    : "bg-gray-200 hover:bg-gray-300 text-gray-800"
                 } transition-all duration-300 transform hover:scale-105`}
               >
                 Sales
@@ -263,7 +266,7 @@ const Inventory = () => {
                 className={`px-6 py-2.5 rounded-lg font-medium ${
                   filter === "restock" 
                     ? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg shadow-green-500/30" 
-                    : "bg-gray-800 hover:bg-gray-700 text-gray-300"
+                    : "bg-gray-200 hover:bg-gray-300 text-gray-800"
                 } transition-all duration-300 transform hover:scale-105`}
               >
                 Restock
@@ -274,7 +277,7 @@ const Inventory = () => {
               placeholder="Search products..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="px-6 py-2.5 rounded-lg bg-gray-800/50 text-white border border-gray-700/50 backdrop-blur-sm focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all duration-300 w-full md:w-auto placeholder-gray-400 hover:bg-gray-700/50"
+              className="px-6 py-2.5 rounded-lg bg-gray-200 text-black border border-gray-300 backdrop-blur-sm focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500/50 transition-all duration-300 w-full md:w-auto placeholder-gray-400 hover:bg-gray-300"
             />
           </motion.div>
 
@@ -284,18 +287,14 @@ const Inventory = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="text-center p-8 rounded-xl bg-gray-800/30 backdrop-blur-sm border border-gray-700/50"
+                className="text-center p-8 rounded-xl bg-gray-200 border border-gray-300"
               >
                 <motion.div
                   animate={{
                     scale: [1, 1.2, 1],
                     rotate: [0, 180, 360],
                   }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                   className="inline-block mb-4 text-4xl"
                 >
                   📊
@@ -303,7 +302,7 @@ const Inventory = () => {
                 <p className="text-xl font-medium text-yellow-400 mb-2">
                   Loading your dashboard...
                 </p>
-                <p className="text-gray-400">
+                <p className="text-gray-600">
                   Fetching the latest inventory data
                 </p>
               </motion.div>
@@ -324,7 +323,7 @@ const Inventory = () => {
                       {displayedSales.map((item) => (
                         <li
                           key={item.id}
-                          className="border-b py-3 flex justify-between items-center bg-gray-700 rounded-lg p-2 hover:bg-gray-600 transition"
+                          className="border-b py-3 flex justify-between items-center bg-gray-100 rounded-lg p-2 hover:bg-gray-200 transition"
                         >
                           <span className="font-medium">
                             {item.product?.name || "Unknown"}
@@ -345,7 +344,7 @@ const Inventory = () => {
                       initial="hidden"
                       animate="visible"
                       exit="hidden"
-                      className="bg-gray-800 p-6 rounded-xl shadow-lg mt-10"
+                      className="bg-gray-100 p-6 rounded-xl shadow-lg mt-10"
                       whileHover={{ scale: 1.02 }}
                     >
                       <h2 className="text-2xl font-semibold mb-4 text-center text-red-300">
@@ -356,10 +355,7 @@ const Inventory = () => {
                           <CartesianGrid strokeDasharray="3 3" stroke="#555" />
                           <XAxis dataKey="name" stroke="#999" />
                           <YAxis stroke="#999" />
-                          <Tooltip
-                            content={<CustomTooltip />}
-                            cursor={{ stroke: "red", strokeWidth: 2 }}
-                          />
+                          <Tooltip content={<CustomTooltip />} cursor={{ stroke: "red", strokeWidth: 2 }} />
                           <Line
                             type="monotone"
                             dataKey="sales"
@@ -402,7 +398,7 @@ const Inventory = () => {
                       {displayedRestocks.map((item) => (
                         <li
                           key={item.id}
-                          className="border-b py-3 flex justify-between items-center bg-gray-700 rounded-lg p-2 hover:bg-gray-600 transition"
+                          className="border-b py-3 flex justify-between items-center bg-gray-100 rounded-lg p-2 hover:bg-gray-200 transition"
                         >
                           <span className="font-medium">
                             {item.product?.name || "Unknown"}
@@ -423,7 +419,7 @@ const Inventory = () => {
                       initial="hidden"
                       animate="visible"
                       exit="hidden"
-                      className="bg-gray-800 p-6 rounded-xl shadow-lg mt-10"
+                      className="bg-gray-100 p-6 rounded-xl shadow-lg mt-10"
                       whileHover={{ scale: 1.02 }}
                     >
                       <h2 className="text-2xl font-semibold mb-4 text-center text-green-300">
@@ -453,7 +449,7 @@ const Inventory = () => {
                     initial="hidden"
                     animate="visible"
                     exit="hidden"
-                    className="bg-gray-800/30 p-6 rounded-2xl border border-gray-700/50 backdrop-blur-sm shadow-xl hover:shadow-2xl transition-all duration-300"
+                    className="bg-gray-100 p-6 rounded-2xl border border-gray-300 backdrop-blur-sm shadow-xl hover:shadow-2xl transition-all duration-300"
                     whileHover={{ scale: 1.02 }}
                   >
                     <h2 className="text-2xl font-semibold mb-4 text-center text-yellow-400">
@@ -496,7 +492,7 @@ const Inventory = () => {
                   initial="hidden"
                   animate="visible"
                   exit="hidden"
-                  className="bg-gray-800/30 p-6 rounded-2xl border border-gray-700/50 backdrop-blur-sm shadow-xl mt-10 hover:shadow-2xl transition-all duration-300"
+                  className="bg-gray-100 p-6 rounded-2xl border border-gray-300 backdrop-blur-sm shadow-xl mt-10 hover:shadow-2xl transition-all duration-300"
                   whileHover={{ scale: 1.02 }}
                 >
                   <h2 className="text-2xl font-semibold mb-4 text-center text-yellow-400">
@@ -506,7 +502,7 @@ const Inventory = () => {
                     {Object.entries(categorySales).map(([category, quantity]) => (
                       <li
                         key={category}
-                        className="border-b py-3 flex justify-between items-center text-gray-300 bg-gray-700/50 rounded-lg p-4 hover:bg-gray-600/50 transition-all duration-300 transform hover:scale-102 hover:shadow-lg backdrop-blur-sm"
+                        className="border-b py-3 flex justify-between items-center text-gray-600 bg-gray-100 rounded-lg p-4 hover:bg-gray-200 transition-all duration-300 transform hover:scale-102 hover:shadow-lg backdrop-blur-sm"
                       >
                         <span className="font-medium">{category}</span>
                         <span>{quantity} units</span>
@@ -518,7 +514,8 @@ const Inventory = () => {
             )}
           </AnimatePresence>
         </motion.div>
-      </div>
+        </div>
+      </MainLayout>
     </ErrorBoundary>
   );
 };

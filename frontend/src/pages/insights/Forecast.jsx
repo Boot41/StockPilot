@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Bar } from 'react-chartjs-2';
+import { ENDPOINTS } from '../../config';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -25,7 +26,7 @@ const Forecast = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [bgGradient] = useState('bg-gradient-to-b from-blue-900 to-gray-900');
+  const [bgGradient] = useState('bg-gradient-to-b from-blue-100 to-gray-100');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,8 +37,18 @@ const Forecast = () => {
         
         // Fetch data from both APIs
         const [forecastResponse, geminiResponse] = await Promise.all([
-          fetch('http://127.0.0.1:8000/api/forecast/'),
-          fetch('http://127.0.0.1:8000/api/gemini-insights/')
+          fetch(ENDPOINTS.FORECAST, {
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+          }),
+          fetch(ENDPOINTS.GEMINI_INSIGHTS, {
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+          })
         ]);
 
         // Check if both responses are ok
@@ -180,16 +191,16 @@ const Forecast = () => {
   return (
     <ErrorBoundary>
       <MainLayout>
-        <div className={`min-h-screen p-8 text-white ${bgGradient}`}>
+        <div className={`min-h-screen p-8 text-black ${bgGradient}`}>
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="text-3xl font-extrabold text-yellow-400 mb-2">
+            <h1 className="text-3xl font-extrabold text-black mb-2">
               AI-Powered Demand Forecast
             </h1>
-            <p className="text-gray-300 mb-6">
+            <p className="text-gray-600 mb-6">
               Predictive analytics to optimize your inventory levels
             </p>
           </motion.div>
@@ -199,7 +210,7 @@ const Forecast = () => {
               <select
                 value={timeframe}
                 onChange={(e) => setTimeframe(e.target.value)}
-                className="block w-full pl-3 pr-10 py-2 text-base border-gray-700 rounded-md bg-gray-800 text-white"
+                className="block w-full pl-3 pr-10 py-2 text-base border-gray-400 rounded-md bg-gray-200 text-black"
               >
                 <option>3 months</option>
                 <option>6 months</option>
@@ -208,7 +219,7 @@ const Forecast = () => {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="px-4 py-2 border rounded-md text-gray-300 bg-gray-800 hover:bg-gray-700 transition-colors duration-300 flex items-center"
+                className="px-4 py-2 border rounded-md text-gray-600 bg-gray-200 hover:bg-gray-300 transition-colors duration-300 flex items-center"
                 onClick={() => navigate(-1)}
               >
                 <ArrowLeft size={16} className="mr-2" /> Back
@@ -219,7 +230,7 @@ const Forecast = () => {
               placeholder="Search products..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="px-4 py-2 rounded-md bg-gray-800 text-white border border-gray-700"
+              className="px-4 py-2 rounded-md bg-gray-200 text-black border border-gray-400"
             />
           </div>
 
@@ -229,7 +240,7 @@ const Forecast = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="text-gray-300"
+                className="text-gray-600"
               >
                 Loading forecast data...
               </motion.p>
@@ -251,7 +262,7 @@ const Forecast = () => {
                 exit={{ opacity: 0, y: 20 }}
                 transition={{ duration: 0.3 }}
                 whileHover={{ scale: 1.02 }}
-                className="bg-gray-800 rounded-lg shadow overflow-hidden p-6 h-96"
+                className="bg-gray-200 rounded-lg shadow overflow-hidden p-6 h-96"
               >
                 <Bar data={getChartData()} options={chartOptions} />
               </motion.div>

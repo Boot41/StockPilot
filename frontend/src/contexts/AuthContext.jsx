@@ -2,7 +2,7 @@
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
-import { axiosInstance, API_ENDPOINTS } from '../config/api'; // Import axiosInstance and API_ENDPOINTS
+import { axiosInstance, API_ENDPOINTS, fetchCSRFToken } from '../config/api'; // Import axiosInstance and API_ENDPOINTS
 
 const AuthContext = createContext(undefined);
 
@@ -42,66 +42,46 @@ export const AuthProvider = ({ children }) => {
   const login = async (username, password) => {
     setLoading(true);
     setError(null);
+    
     try {
-      // Use the correct login endpoint from API_ENDPOINTS.AUTH.LOGIN with axiosInstance
-      const response = await axiosInstance.post(API_ENDPOINTS.AUTH.LOGIN, { username, password });
-
-      const { access, refresh } = response.data;
-      localStorage.setItem('access_token', access);
-      localStorage.setItem('refresh_token', refresh);
-
-      const decodedUser = jwtDecode(access);
-      setToken(access);
-      setUser({ id: decodedUser.user_id, username: decodedUser.username });
-      setIsAuthenticated(true);
-    } catch (err) {
-      console.error('Login error:', err.response?.data || err.message);
-      setError(err.response?.data?.detail || 'Invalid credentials');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const signup = async (username, email, password, confirmPassword) => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Use the register endpoint from API_ENDPOINTS.AUTH.REGISTER with axiosInstance
-      const response = await axiosInstance.post(API_ENDPOINTS.AUTH.REGISTER, { 
-        username, 
-        email, 
-        password, 
-        confirm_password: confirmPassword // Send confirm password
+      // First ensure we have a CSRF token
+      const csrfResponse = await fetchCSRFToken();
+      console.log('CSRF Token Response:', csrfResponse);
+      
+      // Log the request payload
+      console.log('Login Request Payload:', { username, password });
+      
+      // Attempt login
+      const response = await axiosInstance.post(API_ENDPOINTS.AUTH.LOGIN, {
+        username,
+        password
       });
 
-      const { access, refresh } = response.data;
-      localStorage.setItem('access_token', access);
-      localStorage.setItem('refresh_token', refresh);
+      console.log('Login Response:', response.data);
 
-      const decodedUser = jwtDecode(access);
-      setToken(access);
-      setUser({ id: decodedUser.user_id, username: decodedUser.username });
-      setIsAuthenticated(true);
+      const { user, access, refresh } = response.data;
+      
+      if (access && refresh) {
+        localStorage.setItem('access_token', access);
+        localStorage.setItem('refresh_token', refresh);
+        setToken(access);
+        setUser(user);
+        setIsAuthenticated(true);
+      } else {
+        throw new Error('Invalid response from server');
+      }
     } catch (err) {
-      console.error('Signup error:', err.response?.data || err.message);
-      setError(err.response?.data?.detail || 'Signup failed');
+      console.error('Login error details:', {
+        response: err.response?.data,
+        status: err.response?.status,
+        headers: err.response?.headers,
+        error: err
+      });
+      setError(err.response?.data?.detail || 'Login failed. Please check your credentials.');
+      setIsAuthenticated(false);
+      setUser(null);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const forgotPassword = async (email) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await axiosInstance.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, { email });
-      setLoading(false);
-      return { success: true, message: "Password reset link has been sent to your email!" };
-    } catch (err) {
-      setLoading(false);
-      const errorMessage = err.response?.data?.error || "Failed to send reset link";
-      setError(errorMessage);
-      return { success: false, message: errorMessage };
     }
   };
 
@@ -113,18 +93,17 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(false);
   };
 
+  const value = {
+    user,
+    loading,
+    error,
+    isAuthenticated,
+    login,
+    logout
+  };
+
   return (
-    <AuthContext.Provider value={{
-      user,
-      token,
-      isAuthenticated,
-      login,
-      signup,
-      logout,
-      forgotPassword,
-      loading,
-      error
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

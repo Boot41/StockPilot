@@ -9,7 +9,10 @@ container_tag   = "latest"
 
 # Environment Variables (Optional)
 environment_variables = {
-  "DEBUG"        = "false"
-  "LOG_LEVEL"    = "info"
-  "DB_NAME" = "sample.sqlite3"
+  "DEBUG"                     = "false"
+  "LOG_LEVEL"                 = "info"
+  "DB_NAME"                   = "sample.sqlite3"
+  "SECRET_KEY"                = "your-secret-key-here"
+  "DJANGO_SUPERUSER_PASSWORD" = "admin123"
+  "DJANGO_SETTINGS_MODULE"    = "ai_inventory_backend.settings"
 }

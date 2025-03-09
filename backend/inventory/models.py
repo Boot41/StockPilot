@@ -1,11 +1,12 @@
 from django.db import models
-from decimal import Decimal
+from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
+from decimal import Decimal
 from django.db.models import Sum, F, ExpressionWrapper, fields
 from django.core.exceptions import ValidationError
 from django.utils.timezone import now
 
-# ✅ Product Model
+# Product Model
 class Product(models.Model):
     name = models.CharField(max_length=255, unique=True)
     category = models.CharField(max_length=255, blank=True, null=True)
@@ -51,7 +52,7 @@ class Product(models.Model):
         )['revenue'] or Decimal(0)
 
 
-# ✅ Inventory Transaction Model
+# Inventory Transaction Model
 class InventoryTransaction(models.Model):
     TRANSACTION_TYPES = [
         ('restock', 'Restock'),
@@ -90,7 +91,7 @@ class InventoryTransaction(models.Model):
         return f"{self.transaction_type.capitalize()} | {self.product.name} | Cost: {self.transaction_cost}"
 
 
-# ✅ Order Model
+# Order Model
 class Order(models.Model):
     ORDER_STATUSES = [
         ('pending', 'Pending'),
@@ -99,7 +100,7 @@ class Order(models.Model):
 
     customer_name = models.CharField(max_length=255)
     telephone_number = PhoneNumberField()
-    order_date = models.DateTimeField(auto_now_add=True)
+    order_date = models.DateTimeField(default=timezone.now)
     status = models.CharField(max_length=20, choices=ORDER_STATUSES, default='pending')
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
 
@@ -116,7 +117,7 @@ class Order(models.Model):
         return f"Order: {self.customer_name} | {self.total_amount}"
 
 
-# ✅ OrderItem Model
+# OrderItem Model
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='order_items')
@@ -143,7 +144,7 @@ class OrderItem(models.Model):
         return f"{self.quantity} x {self.product.name} | {self.order.customer_name}"
 
 
-# ✅ Stock Alert Model
+# Stock Alert Model
 class StockAlert(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     stock_level = models.PositiveIntegerField()
@@ -151,7 +152,7 @@ class StockAlert(models.Model):
     resolved = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"⚠️ Stock Alert: {self.product.name} at {self.stock_level}"
+        return f" Stock Alert: {self.product.name} at {self.stock_level}"
 
     @staticmethod
     def total_stock_alerts():
@@ -166,7 +167,7 @@ class StockAlert(models.Model):
         return Product.objects.filter(quantity_in_stock=0).count()
 
 
-# ✅ Analytics Helper Methods
+# Analytics Helper Methods
 def total_sales():
     return OrderItem.objects.aggregate(total=Sum('quantity'))['total'] or 0
 
@@ -188,12 +189,14 @@ def inventory_health():
     }
 
 
-# ✅ Chat Session Model
+# Chat Session Model
 class ChatSession(models.Model):
     title = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     uploaded_data = models.JSONField(null=True, blank=True)
+    excel_data = models.JSONField(null=True, blank=True, help_text='Stores the latest uploaded Excel data')
+    is_using_excel = models.BooleanField(default=False, help_text='Whether to use Excel data for responses')
 
     def __str__(self):
         return f"Chat {self.id} - {self.title or 'Untitled'} ({self.created_at.strftime('%Y-%m-%d %H:%M')})"
@@ -202,7 +205,7 @@ class ChatSession(models.Model):
         ordering = ['-updated_at']
 
 
-# ✅ Chat Message Model
+# Chat Message Model
 class ChatMessage(models.Model):
     SENDER_CHOICES = [
         ('user', 'User'),
